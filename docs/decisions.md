@@ -57,3 +57,29 @@ Short notes on each choice, the reason, and the alternative. Updated at every st
 - The LVMH annual report is a magazine-style document: 58 of its 184 pages have almost no
   text, and some titles are extracted with spaced letters ("A n n u a l R e p o r t").
 - Tables are extracted as flat text, row by row, so numbers lose their column headers.
+
+## Stage 2: hybrid retrieval and reranking
+
+- **Reciprocal Rank Fusion, implemented by hand** (`retrieval/hybrid.py`):
+  `score(d) = Σ 1 / (k + rank)`, ranks starting at 1. It uses positions only, because
+  cosine scores (~0.7–0.8) and BM25 scores (0–40) are on different scales and cannot be
+  added. A chunk found by both retrievers gets two contributions and rises.
+- **k = 60**, the value from the original RRF paper (Cormack, Clarke & Büttcher, 2009).
+  A large k makes rank 1 and rank 5 count almost the same (1/61 vs 1/65), so *agreement
+  between retrievers* matters more than being first in one list. A unit test shows the
+  difference with k = 0.
+- **Each retriever contributes its top 20** before fusion. More candidates raise recall but
+  give the reranker more work. Configurable (`RETRIEVAL_CANDIDATES`).
+- **Cross-encoder reranker** (`cross-encoder/ms-marco-MiniLM-L-6-v2`) on the **top 20
+  fused** results. A bi-encoder (the dense index) embeds query and chunk separately: fast,
+  but coarse. A cross-encoder reads them together and judges whether the chunk answers the
+  question: precise, but it costs one model call per (query, chunk) pair, so it is only
+  applied to a short list. Its latency is measured in Stage 6. Alternative: a larger
+  reranker (e.g. bge-reranker-base), slower on CPU.
+- **One `retrieve(query, mode=...)` entry point** with four modes, so the ablation runs the
+  exact same code path for each mode. Models are loaded once and reused.
+- **Deterministic tie-breaking** (first appearance in RRF; stable sort in reranking), so
+  evaluation runs are reproducible.
+- **Deferred: removing section headings** that start many chunks ("6 FINANCIAL STATEMENTS
+  AS OF DECEMBER 31, 2025"). They may make chunks look alike to the dense model, but the
+  change will only be made if the Stage 6 evaluation shows it helps.

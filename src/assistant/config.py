@@ -47,6 +47,9 @@ class Settings(BaseSettings):
     chunk_overlap: int = Field(default=80, ge=0)
     embedding_model: str = "BAAI/bge-small-en-v1.5"
     reranker_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+    retrieval_candidates: int = Field(default=20, gt=0)  # results taken from each retriever
+    rerank_top_n: int = Field(default=20, gt=0)  # fused results read by the cross-encoder
+    rrf_k: int = Field(default=60, ge=0)
 
     # SQL tool
     sql_row_limit: int = Field(default=100, gt=0)
