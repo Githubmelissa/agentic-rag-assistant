@@ -83,3 +83,32 @@ Short notes on each choice, the reason, and the alternative. Updated at every st
 - **Deferred: removing section headings** that start many chunks ("6 FINANCIAL STATEMENTS
   AS OF DECEMBER 31, 2025"). They may make chunks look alike to the dense model, but the
   change will only be made if the Stage 6 evaluation shows it helps.
+
+## Stage 3: answers with citations
+
+- **LLM: Ollama with `qwen2.5:3b` by default (free, local).** No account or API key, and
+  data never leaves the laptop. Trade-off: on a laptop CPU it is slow (measured in Stage 6)
+  and a 3B model follows instructions less reliably than large hosted models. Alternatives
+  with the same code: `groq` (free hosted tier, e.g. Llama 3.3 70B, fast; needs a key)
+  or any OpenAI-compatible endpoint. Switching is one line in `.env`.
+- **Provider-agnostic wrapper with plain `httpx`** (`llm.py`): one `complete(system, user)`
+  method, returning text, token counts and latency. No vendor SDKs: one small dependency and
+  the request format is visible. A `MockLLM` makes tests and CI run without any model.
+- **Ollama context window set explicitly** (`num_ctx = 4096`). Ollama's default window is
+  small and silently cuts off long prompts; 5 passages of ≤ 500 tokens plus instructions
+  need ~3,000 tokens. 8192 was tried first but crashed Ollama once for lack of memory on a 16 GB laptop with other apps open; 4096 fits our prompts and uses less RAM.
+- **Temperature 0**: answers as deterministic as possible, so evaluation runs are
+  repeatable.
+- **Grounding prompt** (`agent/prompts.py`): use only the context, cite every factual
+  sentence with the passage label, copy numbers exactly, and reply with one fixed sentence
+  ("I could not find this in the documents.") when the answer is missing. A fixed sentence
+  makes refusals easy to detect and to score.
+- **Citations use the PDF page number** (`[kering_urd_2025 p.47]`); the printed page is
+  shown next to it in the output (`printed p.45`) when the PDF defines one.
+- **Citation checking**: every label cited by the model is matched against the passages it
+  was actually given. Labels that were not in the context are reported as
+  `invalid_citations` (a sign of hallucination). This is a cheap, automatic faithfulness
+  signal; the LLM-as-judge in Stage 6 checks whether the cited passage really supports the
+  sentence.
+- **Top 5 passages as context** (`ANSWER_TOP_K`). More passages raise the chance the answer
+  is included, but make prompts longer (slower on CPU) and can distract a small model.

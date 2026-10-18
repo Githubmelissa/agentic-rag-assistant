@@ -1,6 +1,6 @@
 # Agentic RAG Assistant for Company Reports and Sales Data
 
-> Status: **in progress** (Stage 2 of 8: hybrid retrieval and reranking).
+> Status: **in progress** (Stage 3 of 8: answers with citations).
 
 An assistant that answers business questions from two sources and shows its work:
 
@@ -45,6 +45,17 @@ python -m assistant.ingest                     # chunk + embed + index (first ru
 python -m assistant.retrieval "What was Kering's revenue in 2025?"                 # hybrid + rerank
 python -m assistant.retrieval "What was Kering's revenue in 2025?" --mode bm25     # dense | bm25 | hybrid | hybrid_rerank
 python -m assistant.retrieval "What was Kering's revenue in 2025?" --compare       # all four modes side by side
+```
+
+### Ask questions (answers with cited pages)
+
+The default LLM runs locally and for free with [Ollama](https://ollama.com):
+install it, then `ollama pull qwen2.5:3b`. Set `LLM_PROVIDER` in `.env` to switch
+(`ollama`, `groq`, `openai_compatible`, or `mock` for a fake LLM).
+
+```
+python -m assistant.ask "What was Kering's revenue in 2025?"
+python -m assistant.ask            # interactive mode
 ```
 
 Design choices are explained in `docs/decisions.md`.

@@ -18,6 +18,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 PROJECT_ROOT: Path = Path(__file__).resolve().parents[2]
 
 RetrievalMode = Literal["dense", "bm25", "hybrid", "hybrid_rerank"]
+LLMProvider = Literal["mock", "ollama", "groq", "openai_compatible"]
 
 
 class Settings(BaseSettings):
@@ -30,10 +31,18 @@ class Settings(BaseSettings):
     )
 
     # LLM
-    llm_provider: str = "mock"
+    llm_provider: LLMProvider = "mock"
     llm_model: str = ""
     llm_api_key: str = Field(default="", repr=False)  # never printed in logs or reprs
+    llm_base_url: str = ""  # only for provider "openai_compatible"
     ollama_base_url: str = "http://localhost:11434"
+    llm_temperature: float = Field(default=0.0, ge=0.0, le=2.0)
+    llm_max_tokens: int = Field(default=512, gt=0)
+    llm_num_ctx: int = Field(default=4096, gt=0)  # Ollama context window, in tokens
+    llm_timeout_seconds: float = Field(default=300.0, gt=0)
+
+    # Answer generation
+    answer_top_k: int = Field(default=5, gt=0)  # chunks given to the LLM as context
 
     # Paths (relative paths are resolved against the project root)
     data_dir: Path = Path("data")
