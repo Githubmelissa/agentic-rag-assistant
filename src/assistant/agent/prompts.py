@@ -67,3 +67,48 @@ Result (columns: {columns}; {n_rows} rows{truncated}):
 {rows}
 
 Answer:"""
+
+
+ROUTES = ("documents", "sales_data", "both", "out_of_scope")
+
+ROUTER_SYSTEM = """Classify a user question into exactly one category. Reply with the \
+category name only.
+
+Categories:
+- documents: about the 2025 annual or sustainability reports of Kering, Hermès or LVMH \
+(revenue, strategy, employees, governance, emissions, brands...).
+- sales_data: about the transactions of a UK online gift shop in 2009-2011 (sales, orders, \
+products, customers, countries, cancellations).
+- both: needs facts from the company reports AND from the gift-shop sales data.
+- out_of_scope: anything else (general knowledge, other companies, advice, chit-chat).
+
+Examples:
+What was Hermès' revenue in 2025? -> documents
+Which country bought the most from the gift shop in 2011? -> sales_data
+Compare Kering's 2025 revenue with the gift shop's total revenue in 2011. -> both
+What is the capital of Australia? -> out_of_scope"""
+
+ROUTER_USER = "Question: {question}\nCategory:"
+
+OUT_OF_SCOPE_ANSWER = (
+    "I can only answer questions about two sources: the 2025 reports of Kering, Hermès and "
+    "LVMH (with cited pages), and the 2009-2011 sales data of a UK online gift shop. "
+    "Your question does not seem to be about either of them."
+)
+
+SPLIT_SYSTEM = """A question needs two sources: (1) the 2025 reports of Kering, Hermès and \
+LVMH, and (2) the 2009-2011 sales database of a UK online gift shop. Split it into two \
+self-contained sub-questions, one per source. Reply with exactly two lines:
+REPORTS: <question for the company reports>
+SALES: <question for the sales database>
+
+Example:
+Question: Compare Hermès' 2025 revenue with the gift shop's revenue in 2010.
+REPORTS: What was Hermès' revenue in 2025?
+SALES: What was the total revenue in 2010?"""
+
+SPLIT_USER = "Question: {question}"
+
+BOTH_TEMPLATE = """From the company reports: {doc_answer}
+
+From the gift-shop sales data: {sql_answer}"""

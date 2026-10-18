@@ -1,0 +1,112 @@
+{
+  "trace_id": "cb8f94d936f6",
+  "timestamp_utc": "2026-10-18T20:54:09+00:00",
+  "question": "Compare Kering's revenue in 2025 with the gift shop's total revenue in 2011.",
+  "route": "both",
+  "answer": "Kering's revenue in 2025 was €14,675 million [kering_urd_2025 p.13], while the gift shop's total revenue in 2011 was approximately £947,158 [sales_clean data].",
+  "citations": [
+    "kering_urd_2025 p.13"
+  ],
+  "sql": "SELECT ROUND(SUM(line_total), 2) AS revenue FROM sales_clean WHERE invoice_date >= '2011-01-01' AND invoice_date < '2012-01-01' LIMIT 100",
+  "total_latency_s": 169.777,
+  "llm_model": "qwen2.5:3b",
+  "retrieval_mode": "hybrid_rerank",
+  "steps": [
+    {
+      "node": "route",
+      "latency_s": 3.708,
+      "raw_reply": "both",
+      "route": "both",
+      "parsed_ok": true,
+      "llm_calls": 1,
+      "input_tokens": 251,
+      "output_tokens": 2,
+      "llm_latency_s": 3.708
+    },
+    {
+      "node": "split",
+      "latency_s": 11.782,
+      "doc_question": "What was Kering's revenue in 2025?",
+      "sql_question": "What was the total revenue in 2011?",
+      "parsed_ok": true,
+      "llm_calls": 1,
+      "input_tokens": 189,
+      "output_tokens": 32,
+      "llm_latency_s": 11.782
+    },
+    {
+      "node": "doc_rag",
+      "latency_s": 123.843,
+      "retrieval_mode": "hybrid_rerank",
+      "retrieved": [
+        {
+          "chunk_id": "kering_urd_2025:p45:c1",
+          "page": 45,
+          "score": 7.7723
+        },
+        {
+          "chunk_id": "kering_urd_2025:p13:c0",
+          "page": 13,
+          "score": 6.7847
+        },
+        {
+          "chunk_id": "kering_urd_2025:p66:c1",
+          "page": 66,
+          "score": 6.6143
+        },
+        {
+          "chunk_id": "kering_urd_2025:p66:c0",
+          "page": 66,
+          "score": 6.0122
+        },
+        {
+          "chunk_id": "kering_urd_2025:p46:c0",
+          "page": 46,
+          "score": 5.8221
+        }
+      ],
+      "answer": "Kering's revenue in 2025 was €14,675 million. [kering_urd_2025 p.13]",
+      "found": true,
+      "citations": [
+        "kering_urd_2025 p.13"
+      ],
+      "invalid_citations": [],
+      "llm_calls": 1,
+      "input_tokens": 2372,
+      "output_tokens": 36,
+      "llm_latency_s": 102.266
+    },
+    {
+      "node": "sql_agent",
+      "latency_s": 17.102,
+      "attempts": [
+        {
+          "sql": "SELECT ROUND(SUM(line_total), 2) AS revenue FROM sales_clean WHERE invoice_date >= '2011-01-01' AND invoice_date < '2012-01-01' LIMIT 100",
+          "error": null,
+          "rejected_by_guard": false
+        }
+      ],
+      "succeeded": true,
+      "row_count": 1,
+      "first_rows": [
+        [
+          "9471580.96"
+        ]
+      ],
+      "answer": "9471580.96GBP",
+      "llm_calls": 2,
+      "input_tokens": 972,
+      "output_tokens": 65,
+      "llm_latency_s": 16.681
+    },
+    {
+      "node": "synthesize",
+      "latency_s": 13.326,
+      "answer": "Kering's revenue in 2025 was €14,675 million [kering_urd_2025 p.13], while the gift shop's total revenue in 2011 was approximately £947,158 [sales_clean data].",
+      "llm_calls": 1,
+      "input_tokens": 235,
+      "output_tokens": 63,
+      "llm_latency_s": 13.326
+    }
+  ]
+}

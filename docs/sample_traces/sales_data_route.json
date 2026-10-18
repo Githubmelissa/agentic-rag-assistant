@@ -1,0 +1,58 @@
+{
+  "trace_id": "448c9231be48",
+  "timestamp_utc": "2026-10-18T20:43:57+00:00",
+  "question": "Which country had the most orders in 2011?",
+  "route": "sales_data",
+  "answer": "United Kingdom",
+  "citations": [],
+  "sql": "SELECT country, COUNT(DISTINCT invoice) AS orders FROM sales_clean WHERE invoice_date >= '2011-01-01' AND invoice_date < '2012-01-01' GROUP BY country ORDER BY orders DESC LIMIT 1",
+  "total_latency_s": 49.916,
+  "llm_model": "qwen2.5:3b",
+  "retrieval_mode": "hybrid_rerank",
+  "steps": [
+    {
+      "node": "route",
+      "latency_s": 3.432,
+      "raw_reply": "sales_data",
+      "route": "sales_data",
+      "parsed_ok": true,
+      "llm_calls": 1,
+      "input_tokens": 239,
+      "output_tokens": 3,
+      "llm_latency_s": 3.432
+    },
+    {
+      "node": "sql_agent",
+      "latency_s": 46.48,
+      "attempts": [
+        {
+          "sql": "SELECT country, COUNT(DISTINCT invoice) AS orders FROM sales_clean WHERE invoice_date >= '2011-01-01' AND invoice_date < '2012-01-01' GROUP BY country ORDER BY orders DESC LIMIT 1",
+          "error": null,
+          "rejected_by_guard": false
+        }
+      ],
+      "succeeded": true,
+      "row_count": 1,
+      "first_rows": [
+        [
+          "United Kingdom",
+          "16461"
+        ]
+      ],
+      "answer": "United Kingdom",
+      "llm_calls": 2,
+      "input_tokens": 979,
+      "output_tokens": 69,
+      "llm_latency_s": 45.922
+    },
+    {
+      "node": "synthesize",
+      "latency_s": 0.0,
+      "answer": "United Kingdom",
+      "llm_calls": 0,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "llm_latency_s": 0
+    }
+  ]
+}

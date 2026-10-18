@@ -151,3 +151,38 @@ Short notes on each choice, the reason, and the alternative. Updated at every st
 - **Two LLM calls per question**: one writes the SQL, one turns the result rows into a
   sentence. The rows themselves are always returned too, so the answer can be checked.
 - **Mock LLM writes a fixed SQL query**, so the full pipeline runs in CI without a model.
+
+## Stage 5: router agent and traces
+
+- **LangGraph state graph** with four nodes (`route`, `doc_rag`, `sql_agent`,
+  `synthesize`) and conditional edges. The state is a typed dict carried between nodes.
+  Alternative: a plain Python `if/else`; LangGraph makes the flow explicit, drawable
+  (Mermaid) and easy to extend (e.g. a "clarify" node), which is what agent frameworks
+  are for. Diagram: `docs/architecture.md`.
+- **LLM router with four labels** and one example per label. The reply is parsed
+  tolerantly ("Sales data", "out-of-scope.", "Category: both"); the first label found wins.
+- **Fallback route `both`** when the reply has no valid label: searching both sources costs
+  time, but refusing a valid question is worse. The trace records `parsed_ok: false`, so
+  these cases are visible and counted in the evaluation.
+- **Query decomposition for `both`** (`split` node): added after a real failure. For
+  "Compare Kering's revenue in 2025 with the gift shop's total revenue in 2011", retrieval
+  found the right pages (p.13 and p.47 in the top 2), but the document tool received the
+  whole question, saw that the gift shop was not in the reports, and refused everything.
+  Now an extra LLM call writes one self-contained sub-question per source ("REPORTS: ...",
+  "SALES: ..."); if the reply cannot be parsed, both tools get the original question.
+- **`both` runs the two tools one after the other**, not in parallel: on a laptop CPU the
+  local LLM is the bottleneck, so parallel calls would not be faster.
+- **No LLM in `synthesize`.** Single-source answers are returned as they are. For `both`,
+  the two answers are placed side by side with a fixed template ("From the company
+  reports: ... From the gift-shop sales data: ..."). An LLM merge was tried first, but on a
+  real run it turned a correct GBP 9,471,580.96 into "approximately GBP 947,158": letting a
+  small model rewrite numbers that are already verified adds risk and ~15 s for no gain.
+  Trade-off: the combined answer reads less fluently.
+- **Fixed refusal for out-of-scope questions**, written in the code, not generated: a
+  refusal should never invent anything and costs no LLM call.
+- **Traces as JSON files** in `logs/` (gitignored): node, latency, inputs/outputs summary,
+  token counts, retrieved chunk IDs and scores, SQL attempts and errors. Full passages and
+  full result tables are not copied, to keep files small. These traces feed the latency
+  and token metrics in Stage 6.
+- **Dependencies injected into `build_graph`** (retriever, LLM, database path), so tests run
+  every route with fakes in a fraction of a second.

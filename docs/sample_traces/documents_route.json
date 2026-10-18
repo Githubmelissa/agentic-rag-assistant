@@ -1,0 +1,78 @@
+{
+  "trace_id": "96f9dd9c3bfe",
+  "timestamp_utc": "2026-10-18T20:42:46+00:00",
+  "question": "What was Hermès' revenue in 2025?",
+  "route": "documents",
+  "answer": "Hermès' revenue in 2025 was €16 billion, up 9% at constant exchange rates and 5.5% at current exchange rates compared to 2024. [hermes_urd_2025 p.8]",
+  "citations": [
+    "hermes_urd_2025 p.8"
+  ],
+  "sql": null,
+  "total_latency_s": 158.027,
+  "llm_model": "qwen2.5:3b",
+  "retrieval_mode": "hybrid_rerank",
+  "steps": [
+    {
+      "node": "route",
+      "latency_s": 19.181,
+      "raw_reply": "documents",
+      "route": "documents",
+      "parsed_ok": true,
+      "llm_calls": 1,
+      "input_tokens": 239,
+      "output_tokens": 2,
+      "llm_latency_s": 19.181
+    },
+    {
+      "node": "doc_rag",
+      "latency_s": 138.83,
+      "retrieval_mode": "hybrid_rerank",
+      "retrieved": [
+        {
+          "chunk_id": "hermes_urd_2025:p8:c0",
+          "page": 8,
+          "score": 6.6667
+        },
+        {
+          "chunk_id": "hermes_urd_2025:p414:c1",
+          "page": 414,
+          "score": 6.2851
+        },
+        {
+          "chunk_id": "hermes_urd_2025:p35:c0",
+          "page": 35,
+          "score": 5.9473
+        },
+        {
+          "chunk_id": "hermes_urd_2025:p33:c0",
+          "page": 33,
+          "score": 5.7458
+        },
+        {
+          "chunk_id": "hermes_urd_2025:p38:c0",
+          "page": 38,
+          "score": 4.7679
+        }
+      ],
+      "answer": "Hermès' revenue in 2025 was €16 billion, up 9% at constant exchange rates and 5.5% at current exchange rates compared to 2024. [hermes_urd_2025 p.8]",
+      "found": true,
+      "citations": [
+        "hermes_urd_2025 p.8"
+      ],
+      "invalid_citations": [],
+      "llm_calls": 1,
+      "input_tokens": 2685,
+      "output_tokens": 58,
+      "llm_latency_s": 112.842
+    },
+    {
+      "node": "synthesize",
+      "latency_s": 0.0,
+      "answer": "Hermès' revenue in 2025 was €16 billion, up 9% at constant exchange rates and 5.5% at current exchange rates compared to 2024. [hermes_urd_2025 p.8]",
+      "llm_calls": 0,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "llm_latency_s": 0
+    }
+  ]
+}

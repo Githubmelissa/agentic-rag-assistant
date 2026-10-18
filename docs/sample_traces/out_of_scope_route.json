@@ -1,0 +1,34 @@
+{
+  "trace_id": "c99f9f8c9389",
+  "timestamp_utc": "2026-10-18T20:47:01+00:00",
+  "question": "What is the capital of Australia?",
+  "route": "out_of_scope",
+  "answer": "I can only answer questions about two sources: the 2025 reports of Kering, Hermès and LVMH (with cited pages), and the 2009-2011 sales data of a UK online gift shop. Your question does not seem to be about either of them.",
+  "citations": [],
+  "sql": null,
+  "total_latency_s": 3.333,
+  "llm_model": "qwen2.5:3b",
+  "retrieval_mode": "hybrid_rerank",
+  "steps": [
+    {
+      "node": "route",
+      "latency_s": 3.33,
+      "raw_reply": "out_of_scope",
+      "route": "out_of_scope",
+      "parsed_ok": true,
+      "llm_calls": 1,
+      "input_tokens": 233,
+      "output_tokens": 4,
+      "llm_latency_s": 3.33
+    },
+    {
+      "node": "synthesize",
+      "latency_s": 0.0,
+      "answer": "I can only answer questions about two sources: the 2025 reports of Kering, Hermès and LVMH (with cited pages), and the 2009-2011 sales data of a UK online gift shop. Your question does not seem to be about either of them.",
+      "llm_calls": 0,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "llm_latency_s": 0
+    }
+  ]
+}

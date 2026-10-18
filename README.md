@@ -1,6 +1,6 @@
 # Agentic RAG Assistant for Company Reports and Sales Data
 
-> Status: **in progress** (Stage 4 of 8: sales database and SQL tool).
+> Status: **in progress** (Stage 5 of 8: router agent and traces).
 
 An assistant that answers business questions from two sources and shows its work:
 
@@ -57,6 +57,16 @@ install it, then `ollama pull qwen2.5:3b`. Set `LLM_PROVIDER` in `.env` to switc
 python -m assistant.ask "What was Kering's revenue in 2025?"
 python -m assistant.ask            # interactive mode
 ```
+
+### The full assistant (router agent)
+
+```
+python -m assistant.agent "What was Hermès' revenue in 2025?"
+python -m assistant.agent            # interactive
+```
+
+The agent decides whether a question needs the reports, the sales data, both, or is out of
+scope, and writes a JSON trace of every run to `logs/`. Architecture: `docs/architecture.md`.
 
 ### Sales data (text-to-SQL)
 

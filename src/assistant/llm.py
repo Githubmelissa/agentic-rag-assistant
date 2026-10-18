@@ -45,14 +45,16 @@ class LLM(Protocol):
 
 
 class MockLLM:
-    """Fake LLM for tests and CI. Writes a fixed SQL query when asked for SQL; otherwise
-    cites the first context label it finds, or refuses."""
+    """Fake LLM for tests and CI. Routes every question to "documents", writes a fixed SQL
+    query when asked for SQL; otherwise cites the first context label it finds, or refuses."""
 
     model = "mock"
     _label = re.compile(r"\[[^\[\]]+ p\.\d+\]")
     SQL = "SELECT COUNT(*) AS n_lines FROM sales_clean"
 
     def complete(self, system: str, user: str) -> LLMResponse:
+        if "Classify a user question" in system:
+            return LLMResponse("documents", self.model, len(user.split()), 1, 0.0)
         if "SQLite SELECT query" in system:
             text = f"```sql\n{self.SQL}\n```"
             return LLMResponse(text, self.model, len(user.split()), len(text.split()), 0.0)
