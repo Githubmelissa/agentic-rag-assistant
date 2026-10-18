@@ -186,3 +186,32 @@ Short notes on each choice, the reason, and the alternative. Updated at every st
   and token metrics in Stage 6.
 - **Dependencies injected into `build_graph`** (retriever, LLM, database path), so tests run
   every route with fakes in a fraction of a second.
+
+## Stage 6: evaluation
+
+- **Evaluation sets drafted by Claude, verified by Melissa** (`python -m eval.verify`).
+  Every item starts as `"verified": false`; only verified items are scored. Results made
+  with `--include-unverified` (dry runs) are labelled and never written to the README.
+- **Several gold pages per question.** A figure such as Kering's 2025 revenue appears on
+  about ten pages (key figures, income statement, segment notes). Retrieval is counted as
+  a hit when *any* page that states the fact is retrieved. The draft lists every page
+  where the answer appears within ~200 characters of its context; the verifier removes
+  pages that do not really answer.
+- **Page-level retrieval metrics**: chunks are reduced to unique (report, page) pairs
+  before computing recall@k and MRR, so two chunks from the same page do not use two slots.
+- **SQL execution accuracy, column-subset match**: both queries are executed; same number
+  of rows, and every gold column must appear among the predicted columns with the same
+  values (floats compared to the cent). A query returning (month, revenue) when the gold
+  returns (month) is correct. Row order matters only for questions that ask for an order.
+  String match on SQL text would reject correct queries written differently.
+- **Evaluation questions differ from the prompt's few-shot examples** and from the
+  questions used while building, so the scores are not inflated by tuning on them.
+- **Answer correctness, two ways**: (a) automatic, the gold headline number (or name)
+  must appear in the answer; (b) LLM-as-judge with a fixed rubric (correct, faithful to
+  cited pages). The judge is the same 3B local model: free but weak, so 20 judgements are
+  checked by hand and the agreement rate is reported.
+- **Resumable runs**: each step caches per-question results in `results/raw/` (not
+  committed: it contains report text). A laptop run interrupted after an hour restarts
+  where it stopped.
+- **The SQL evaluation skips the answer sentence** (`generate_answer=False`): execution
+  accuracy only needs the rows, and it halves the LLM calls.

@@ -40,7 +40,8 @@ api = [
     "fastapi==0.146.0",
     "uvicorn==0.54.0",
 ]
-all = ["agentic-rag-assistant[rag,sql,agent,api]"]
+all = ["agentic-rag-assistant[rag,sql,agent,api,eval]"]
+eval = ["matplotlib==3.11.2"]
 dev = [
     "pytest==9.1.1",
     "ruff==0.17.1",
@@ -59,8 +60,11 @@ addopts = "-q"
 [tool.ruff]
 line-length = 100
 target-version = "py311"
-src = ["src", "tests"]
+src = ["src", "tests", "."]
 
 [tool.ruff.lint]
 # E/F: pycodestyle + pyflakes, I: import sorting, B: bugbear, UP: modern syntax, PTH: use pathlib
 select = ["E", "F", "I", "B", "UP", "PTH"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["assistant", "eval"]

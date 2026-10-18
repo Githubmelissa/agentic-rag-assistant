@@ -10,6 +10,7 @@ data/sales_db_stats.json
 chroma/
 indexes/
 logs/
+results/raw/
 
 # Python
 __pycache__/

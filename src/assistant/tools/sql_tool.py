@@ -79,7 +79,9 @@ def answer_sql_question(
     max_retries: int = 2,
     max_rows: int = 100,
     timeout_s: float = 5.0,
+    generate_answer: bool = True,
 ) -> SQLAnswer:
+    """`generate_answer=False` skips the second LLM call (evaluation only needs the rows)."""
     system = SQL_SYSTEM.format(schema=load_schema())
     user = SQL_USER.format(question=question)
     attempts: list[Attempt] = []
@@ -110,6 +112,9 @@ def answer_sql_question(
             attempts,
             calls,
         )
+
+    if not generate_answer:
+        return SQLAnswer(question, "", result.sql, result, attempts, calls)
 
     truncated = f", first {ROWS_IN_PROMPT} shown" if len(result.rows) > ROWS_IN_PROMPT else ""
     response = llm.complete(

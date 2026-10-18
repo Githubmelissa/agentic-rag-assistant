@@ -1,6 +1,6 @@
 # Agentic RAG Assistant for Company Reports and Sales Data
 
-> Status: **in progress** (Stage 5 of 8: router agent and traces).
+> Status: **in progress** (Stage 6 of 8: evaluation).
 
 An assistant that answers business questions from two sources and shows its work:
 
@@ -101,7 +101,22 @@ pip install -e ".[all,dev]"
 
 ## Evaluation
 
-TBD. All numbers will come from scripts in `eval/`, saved to `results/`.
+All numbers below are produced by scripts in `eval/` and saved in `results/`; nothing is
+estimated. Only questions verified by hand are used (see `data/eval/`).
+
+```
+python -m eval.verify doc            # verify drafted questions (also: sql, mixed, oos)
+python -m eval.run_all               # all steps; resumable (results/raw/ caches answers)
+python -m eval.run_all --steps retrieval sql routing   # faster subsets
+python -m eval.report                # rebuild the tables below from results/*.json
+```
+
+For the chunk-size ablation, build the extra indexes first:
+`python -m assistant.ingest --chunk-size 300` and `python -m assistant.ingest --chunk-size 1000`.
+
+<!-- RESULTS:START -->
+TBD: the evaluation has not been run yet.
+<!-- RESULTS:END -->
 
 ## License
 

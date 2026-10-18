@@ -60,3 +60,9 @@ def test_no_retry_mode_gives_up_after_one_failure(sales_db: Path) -> None:
 def test_mock_llm_works_end_to_end(sales_db: Path) -> None:
     a = answer_sql_question("How many lines?", MockLLM(), sales_db)
     assert a.succeeded and a.result is not None and a.result.rows == [(3,)]
+
+
+def test_generate_answer_false_skips_second_call(sales_db: Path) -> None:
+    llm = ScriptedLLM(["SELECT COUNT(*) FROM sales_clean"])
+    a = answer_sql_question("?", llm, sales_db, generate_answer=False)
+    assert a.succeeded and a.answer == "" and len(a.llm_calls) == 1
