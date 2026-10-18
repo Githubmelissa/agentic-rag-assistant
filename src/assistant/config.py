@@ -41,8 +41,10 @@ class Settings(BaseSettings):
     log_dir: Path = Path("logs")
 
     # Retrieval
-    chunk_size: int = Field(default=600, gt=0)
-    chunk_overlap: int = Field(default=100, ge=0)
+    # Sizes are in tokens of the embedding model's tokenizer. bge-small reads at most 512
+    # tokens, so the default stays below that limit (see docs/decisions.md).
+    chunk_size: int = Field(default=500, gt=0)
+    chunk_overlap: int = Field(default=80, ge=0)
     embedding_model: str = "BAAI/bge-small-en-v1.5"
     reranker_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
 
@@ -63,6 +65,10 @@ class Settings(BaseSettings):
     @property
     def raw_dir(self) -> Path:
         return self.data_dir / "raw"
+
+    def index_dir_for(self, chunk_size: int) -> Path:
+        """One index folder per chunk size, so the chunk-size ablation can keep all three."""
+        return self.index_dir / f"cs{chunk_size}"
 
     @property
     def sales_db_path(self) -> Path:

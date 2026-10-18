@@ -18,8 +18,8 @@ def test_version_is_set() -> None:
 
 def test_defaults() -> None:
     s = make_settings()
-    assert s.chunk_size == 600
-    assert s.chunk_overlap == 100
+    assert s.chunk_size == 500
+    assert s.chunk_overlap == 80
     assert s.llm_provider == "mock"
 
 
@@ -46,3 +46,9 @@ def test_overlap_must_be_smaller_than_chunk_size() -> None:
 def test_api_key_hidden_from_repr() -> None:
     s = make_settings(llm_api_key="secret-value")
     assert "secret-value" not in repr(s)
+
+
+def test_index_dir_per_chunk_size() -> None:
+    s = make_settings()
+    assert s.index_dir_for(300).name == "cs300"
+    assert s.index_dir_for(300).parent == s.index_dir

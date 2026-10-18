@@ -1,6 +1,6 @@
 # Agentic RAG Assistant for Company Reports and Sales Data
 
-> Status: **in progress** (Stage 0 of 8: project skeleton).
+> Status: **in progress** (Stage 1 of 8: ingestion and indexes).
 
 An assistant that answers business questions from two sources and shows its work:
 
@@ -35,6 +35,18 @@ python -m ruff check .
 ```
 
 Install every dependency group (needed from Stage 1 on): `pip install -e ".[all,dev]"`.
+
+### Build the search indexes
+
+Put the report PDFs in `data/raw/` (see `data/README.md`), then:
+
+```
+python -m assistant.ingest                     # chunk + embed + index (first run downloads the model)
+python -m assistant.retrieval "What was Kering's revenue in 2025?"
+python -m assistant.retrieval "What was Kering's revenue in 2025?" --mode bm25
+```
+
+Design choices are explained in `docs/decisions.md`.
 
 ## Evaluation
 
