@@ -4,12 +4,15 @@ from __future__ import annotations
 
 import hashlib
 import math
+import sqlite3
+from contextlib import closing
 from pathlib import Path
 
 import pymupdf
 import pytest
 
 from assistant.retrieval.bm25 import tokenize
+from assistant.sales_data import SCHEMA_SQL
 
 
 class FakeEmbedder:
@@ -47,3 +50,28 @@ def make_pdf(path: Path, pages: list[str], footer: str | None = None) -> Path:
 @pytest.fixture
 def fake_embedder() -> FakeEmbedder:
     return FakeEmbedder()
+
+
+SAMPLE_ROWS = [
+    # invoice, stock_code, description, qty, date, price, customer, country, cancelled, product
+    ("1001", "85123A", "WHITE HEART", 6, "2010-03-01 10:00:00", 2.55, 1, "United Kingdom", 0, 1),
+    ("1001", "POST", "POSTAGE", 1, "2010-03-01 10:00:00", 18.0, 1, "United Kingdom", 0, 0),
+    ("1002", "22423", "CAKESTAND", 2, "2011-05-02 11:00:00", 12.75, 2, "France", 0, 1),
+    ("1003", "22423", "CAKESTAND", 1, "2011-06-03 12:00:00", 12.75, None, "EIRE", 0, 1),
+    ("C1004", "22423", "CAKESTAND", -1, "2011-06-04 12:00:00", 12.75, 2, "France", 1, 1),
+]
+
+
+@pytest.fixture
+def sales_db(tmp_path: Path) -> Path:
+    """A tiny database with the real schema (built by the same code as the real one)."""
+    path = tmp_path / "sales.db"
+    with closing(sqlite3.connect(path)) as conn, conn:
+        conn.executescript(SCHEMA_SQL)
+        conn.executemany(
+            "INSERT INTO sales (invoice, stock_code, description, quantity, invoice_date, "
+            "unit_price, line_total, customer_id, country, is_cancelled, is_product) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            [r[:6] + (round(r[3] * r[5], 2),) + r[6:] for r in SAMPLE_ROWS],
+        )
+    return path

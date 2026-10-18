@@ -16,7 +16,12 @@ in this repository.
 ## Sales data
 
 UCI Online Retail II (CC BY 4.0): https://archive.ics.uci.edu/dataset/502/online+retail+ii
-Download the file, put it in `data/raw/`, then run `python scripts/build_sales_db.py` (added in Stage 4).
+Download the zip, extract `online_retail_II.xlsx` into `data/raw/` (downloaded on
+2026-10-18, 45.6 MB), then run `python scripts/build_sales_db.py`. Cleaning decisions are
+documented in `docs/data_notes.md`.
+
+Citation: Chen, D. (2012). Online Retail II [Dataset]. UCI Machine Learning Repository.
+https://doi.org/10.24432/C5CG6D
 
 ## Evaluation sets
 

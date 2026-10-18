@@ -26,7 +26,11 @@ rag = [
     "chromadb==1.5.9",
     "rank-bm25==0.2.2",
 ]
-sql = ["sqlglot==30.23.0"]
+sql = [
+    "sqlglot==30.23.0",
+    "pandas==3.0.6",
+    "openpyxl==3.1.5",
+]
 agent = [
     "langgraph==1.2.16",
     "langchain-core==1.6.12",
@@ -44,6 +48,9 @@ dev = [
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+assistant = ["tools/*.md"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

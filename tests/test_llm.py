@@ -92,3 +92,10 @@ def test_api_error_never_leaks_key(monkeypatch: pytest.MonkeyPatch) -> None:
     with pytest.raises(LLMError) as err:
         llm.complete("s", "u")
     assert "SECRET-KEY" not in str(err.value)
+
+
+def test_ollama_out_of_memory_hint(monkeypatch: pytest.MonkeyPatch) -> None:
+    body = {"error": "model runner has unexpectedly stopped, this may be due to resource limits"}
+    monkeypatch.setattr(httpx, "post", lambda *a, **k: FakeResponse(500, body))
+    with pytest.raises(LLMError, match="LLM_NUM_CTX"):
+        OllamaLLM("qwen", "http://x", 0.0, 10, 10, 5).complete("s", "u")

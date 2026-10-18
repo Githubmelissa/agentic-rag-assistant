@@ -112,3 +112,42 @@ Short notes on each choice, the reason, and the alternative. Updated at every st
   sentence.
 - **Top 5 passages as context** (`ANSWER_TOP_K`). More passages raise the chance the answer
   is included, but make prompts longer (slower on CPU) and can distract a small model.
+
+## Stage 4: sales database and SQL tool
+
+- **One table plus one view.** `sales` keeps every line with flags (`is_cancelled`,
+  `is_product`); the view `sales_clean` keeps only real product sales. The LLM writes
+  simpler, safer SQL against the view, and questions about cancellations remain possible.
+  Cleaning decisions: `docs/data_notes.md`.
+- **Precomputed `line_total`** and ISO-text dates: fewer chances for the LLM to get revenue
+  or date filters wrong.
+- **Guard in four layers** (`tools/sql_guard.py`): (1) sqlglot parse, exactly one
+  SELECT/UNION statement, no write or admin node anywhere in the tree (catches
+  `WITH ... DELETE`); (2) table allow-list (`sales`, `sales_clean`, CTEs) and a deny-list
+  of file/extension functions; (3) LIMIT added or lowered to `SQL_ROW_LIMIT`; (4) read-only
+  connection (`mode=ro` + `PRAGMA query_only`) with a time limit. The read-only connection
+  alone already blocks writes (a test proves it); the other layers block reads of other
+  tables, runaway queries, and give the LLM precise error messages.
+- **We execute the SQL that sqlglot regenerates**, not the raw text: what runs is exactly
+  what was validated. Checked that regeneration only changes cosmetics (e.g. `strftime` →
+  `STRFTIME`), not results.
+- **Indexes on date, country and customer only; none on `stock_code`.** With a
+  stock_code index, SQLite answered "top products" (GROUP BY stock_code over 1M rows) by
+  walking the index with a random row lookup each time: 2.6 s instead of 1.0 s for a plain
+  scan, which exceeded the time limit on a laptop. `ANALYZE` did not change the plan. A
+  single-product lookup without the index costs ~0.2 s, an acceptable trade-off.
+- **Time limit 15 s** (`SQL_TIMEOUT_SECONDS`): 5 s stopped legitimate full-table scans on a
+  laptop CPU (2-3x slower than the development machine). The limit exists to stop runaway
+  queries (e.g. infinite recursive CTEs), not normal aggregations.
+- **Time limit with a progress handler**: SQLite has no query timeout, so a callback runs
+  every 10,000 VM steps and aborts after `SQL_TIMEOUT_SECONDS`. A test stops an infinite
+  recursive CTE.
+- **Retry loop**: the guard's or SQLite's error message is sent back to the LLM with its
+  previous query, at most `SQL_MAX_RETRIES = 2` more attempts. Setting it to 0 gives the
+  "without retry" ablation.
+- **Schema in a Markdown file** (`tools/schema.md`) inserted into the prompt, plus three
+  worked examples (few-shot). Alternative: introspect the schema automatically; a written
+  description can also carry business rules (e.g. Ireland is 'EIRE').
+- **Two LLM calls per question**: one writes the SQL, one turns the result rows into a
+  sentence. The rows themselves are always returned too, so the answer can be checked.
+- **Mock LLM writes a fixed SQL query**, so the full pipeline runs in CI without a model.

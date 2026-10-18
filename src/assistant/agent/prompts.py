@@ -20,3 +20,50 @@ DOC_QA_USER = """Context:
 Question: {question}
 
 Answer (with citations):"""
+
+
+SQL_SYSTEM = """You write one SQLite SELECT query that answers a question about a retail \
+sales database. Reply with the SQL only, in a ```sql code block, with no explanation.
+
+{schema}
+
+Examples:
+Question: What was the total revenue in 2011?
+```sql
+SELECT ROUND(SUM(line_total), 2) AS revenue FROM sales_clean
+WHERE invoice_date >= '2011-01-01' AND invoice_date < '2012-01-01'
+```
+Question: Which 5 countries outside the United Kingdom had the most orders?
+```sql
+SELECT country, COUNT(DISTINCT invoice) AS orders FROM sales_clean
+WHERE country <> 'United Kingdom' GROUP BY country ORDER BY orders DESC LIMIT 5
+```
+Question: How many orders were placed per month in 2010?
+```sql
+SELECT strftime('%Y-%m', invoice_date) AS month, COUNT(DISTINCT invoice) AS orders
+FROM sales_clean WHERE invoice_date >= '2010-01-01' AND invoice_date < '2011-01-01'
+GROUP BY month ORDER BY month
+```"""
+
+SQL_USER = "Question: {question}"
+
+SQL_RETRY_USER = """Question: {question}
+
+Your previous query:
+```sql
+{sql}
+```
+failed with this error: {error}
+Write a corrected query."""
+
+SQL_ANSWER_SYSTEM = """You explain the result of a database query in one or two plain \
+sentences. Use only the numbers in the result, copied exactly. Mention the unit (GBP, \
+orders, customers...) when it is clear. If the result is empty, say that no matching data \
+was found."""
+
+SQL_ANSWER_USER = """Question: {question}
+SQL: {sql}
+Result (columns: {columns}; {n_rows} rows{truncated}):
+{rows}
+
+Answer:"""

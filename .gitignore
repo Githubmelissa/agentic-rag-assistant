@@ -5,6 +5,8 @@
 data/raw/*
 !data/raw/.gitkeep
 data/sales.db
+data/sales.tmp
+data/sales_db_stats.json
 chroma/
 indexes/
 logs/

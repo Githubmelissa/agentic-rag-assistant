@@ -62,7 +62,8 @@ class Settings(BaseSettings):
 
     # SQL tool
     sql_row_limit: int = Field(default=100, gt=0)
-    sql_timeout_seconds: float = Field(default=5.0, gt=0)
+    sql_timeout_seconds: float = Field(default=15.0, gt=0)
+    sql_max_retries: int = Field(default=2, ge=0)  # extra attempts after a failed query
 
     @model_validator(mode="after")
     def _check_and_resolve(self) -> Settings:

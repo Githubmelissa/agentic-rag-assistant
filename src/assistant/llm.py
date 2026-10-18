@@ -45,12 +45,17 @@ class LLM(Protocol):
 
 
 class MockLLM:
-    """Fake LLM for tests and CI. Cites the first context label it finds, or refuses."""
+    """Fake LLM for tests and CI. Writes a fixed SQL query when asked for SQL; otherwise
+    cites the first context label it finds, or refuses."""
 
     model = "mock"
     _label = re.compile(r"\[[^\[\]]+ p\.\d+\]")
+    SQL = "SELECT COUNT(*) AS n_lines FROM sales_clean"
 
     def complete(self, system: str, user: str) -> LLMResponse:
+        if "SQLite SELECT query" in system:
+            text = f"```sql\n{self.SQL}\n```"
+            return LLMResponse(text, self.model, len(user.split()), len(text.split()), 0.0)
         match = self._label.search(user)
         text = (
             f"According to the documents, this is the answer {match.group(0)}."
@@ -97,7 +102,13 @@ class OllamaLLM:
         if r.status_code == 404:
             raise LLMError(f"Model '{self.model}' not found. Run: ollama pull {self.model}")
         if r.status_code != 200:
-            raise LLMError(f"Ollama error {r.status_code}: {r.text[:300]}")
+            hint = ""
+            if "resource" in r.text or "unexpectedly stopped" in r.text:
+                hint = (
+                    " Likely out of memory: lower LLM_NUM_CTX in .env (e.g. 4096), close other"
+                    " apps, or use a smaller model (e.g. qwen2.5:1.5b)."
+                )
+            raise LLMError(f"Ollama error {r.status_code}: {r.text[:300]}{hint}")
         data = r.json()
         return LLMResponse(
             text=data["message"]["content"].strip(),

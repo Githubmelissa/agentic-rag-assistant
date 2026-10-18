@@ -1,6 +1,6 @@
 # Agentic RAG Assistant for Company Reports and Sales Data
 
-> Status: **in progress** (Stage 3 of 8: answers with citations).
+> Status: **in progress** (Stage 4 of 8: sales database and SQL tool).
 
 An assistant that answers business questions from two sources and shows its work:
 
@@ -57,6 +57,19 @@ install it, then `ollama pull qwen2.5:3b`. Set `LLM_PROVIDER` in `.env` to switc
 python -m assistant.ask "What was Kering's revenue in 2025?"
 python -m assistant.ask            # interactive mode
 ```
+
+### Sales data (text-to-SQL)
+
+Download `online_retail_II.xlsx` (see `data/README.md`) into `data/raw/`, then:
+
+```
+python scripts/build_sales_db.py                                      # about a minute
+python -m assistant.sql_ask "What was the total revenue in 2011?"
+python -m assistant.sql_ask --sql "SELECT country, COUNT(*) FROM sales_clean GROUP BY country"
+```
+
+Every query passes a safety guard (single SELECT only, allowed tables only, enforced LIMIT,
+read-only connection, time limit). Cleaning decisions: `docs/data_notes.md`.
 
 Design choices are explained in `docs/decisions.md`.
 
