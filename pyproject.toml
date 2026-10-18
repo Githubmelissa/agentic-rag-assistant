@@ -1,0 +1,59 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agentic-rag-assistant"
+version = "0.0.1"
+description = "Agentic RAG assistant over company reports and retail sales data, with honest evaluation."
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "Melissa Fahed" }]
+requires-python = ">=3.11"
+# Core: only what every part of the project needs (config loading).
+dependencies = [
+    "pydantic==2.14.1",
+    "pydantic-settings==2.16.0",
+    "python-dotenv==1.2.4",
+]
+
+# Heavy dependencies are split into groups so each stage installs only what it needs.
+# Install everything with:  pip install -e ".[all,dev]"
+[project.optional-dependencies]
+rag = [
+    "pymupdf==1.28.2",
+    "sentence-transformers==6.1.0",
+    "chromadb==1.5.9",
+    "rank-bm25==0.2.2",
+]
+sql = ["sqlglot==30.23.0"]
+agent = [
+    "langgraph==1.2.16",
+    "langchain-core==1.6.12",
+    "httpx==0.28.1",
+]
+api = [
+    "fastapi==0.146.0",
+    "uvicorn==0.54.0",
+]
+all = ["agentic-rag-assistant[rag,sql,agent,api]"]
+dev = [
+    "pytest==9.1.1",
+    "ruff==0.17.1",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+# E/F: pycodestyle + pyflakes, I: import sorting, B: bugbear, UP: modern syntax, PTH: use pathlib
+select = ["E", "F", "I", "B", "UP", "PTH"]

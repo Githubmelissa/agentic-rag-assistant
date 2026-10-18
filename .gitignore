@@ -1,0 +1,27 @@
+# Secrets
+.env
+
+# Data (large or licensed; see data/README.md for download steps)
+data/raw/*
+!data/raw/.gitkeep
+data/sales.db
+chroma/
+indexes/
+logs/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+build/
+dist/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

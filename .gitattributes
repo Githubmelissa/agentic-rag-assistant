@@ -1,0 +1,5 @@
+# Keep line endings consistent between Windows and Linux/CI
+* text=auto eol=lf
+*.ps1 text eol=crlf
+*.pdf binary
+*.db binary
