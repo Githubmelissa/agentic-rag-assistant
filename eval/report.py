@@ -145,8 +145,7 @@ def agent_section(a: dict[str, Any] | None, j: dict[str, Any] | None) -> str:
         + "\n\n#### Latency per route (laptop CPU, local LLM)\n\n"
         + table(["route", "n", "median", "p95"], lat)
         + f"\n\nTokens per query (input + output, all LLM calls): median {t['median']}, "
-        f"mean {t['mean']} (n = {t['n']})."
-        + previous_agent_note()
+        f"mean {t['mean']} (n = {t['n']})." + previous_agent_note()
     )
 
 

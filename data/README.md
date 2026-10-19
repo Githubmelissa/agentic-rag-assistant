@@ -11,9 +11,12 @@ put them in `data/raw/` under exactly these file names, because the file name is
 
 | File name in `data/raw/` | Company / report | Pages | Downloaded from | Downloaded on |
 |---|---|---|---|---|
-| `kering_urd_2025.pdf` | Kering, 2025 Universal Registration Document (filed with the AMF on 21 April 2026, ref. D.26-0266) | 516 | FILL_KERING | 2026-10-18 |
-| `hermes_urd_2025.pdf` | Hermès International, 2025 Universal Registration Document | 535 | FILL_HERMES | 2026-10-18 |
-| `lvmh_annual_report_2025.pdf` | LVMH, 2025 Annual Report | 184 | FILL_LVMH | 2026-10-18 |
+| `kering_urd_2025.pdf` | Kering, 2025 Universal Registration Document (filed with the AMF on 21 April 2026, ref. D.26-0266) | 516 | <https://www.kering.com/api/download-file/?path=02_Universal_Registration_Document_2025_EN_216d1c494b.pdf> | 2026-10-18 |
+| `hermes_urd_2025.pdf` | Hermès International, 2025 Universal Registration Document (French version filed with the AMF on 19 March 2026) | 535 | <https://assets-finance.hermes.com/s3fs-public/node/pdf_file/2026-04/1777391712/260320_hermes_urd2025_en.pdf> | 2026-10-18 |
+| `lvmh_annual_report_2025.pdf` | LVMH, 2025 Annual Report | 184 | <https://www.lvmh.com/en/publications> (Reports tab) | 2026-10-18 |
+
+If a link has moved, the document is in the "Finance" or "Investors" section of the
+company's own website; the file name above is what the citations refer to.
 
 Each company publishes these documents freely for shareholders and the public. This
 project reads them locally and quotes short passages with their page numbers; it does not
