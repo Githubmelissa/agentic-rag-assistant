@@ -170,6 +170,15 @@ Short notes on each choice, the reason, and the alternative. Updated at every st
   whole question, saw that the gift shop was not in the reports, and refused everything.
   Now an extra LLM call writes one self-contained sub-question per source ("REPORTS: ...",
   "SALES: ..."); if the reply cannot be parsed, both tools get the original question.
+  **Hardened after the Stage 6 agent run** (see the failure log): a sub-question may be
+  `NONE` (that source is not needed, so the tool is skipped), and a sub-question that
+  mentions a number or a company absent from the user's question is dropped, because the
+  3B model sometimes answers with the example from its own prompt. When nothing valid is
+  left, only the document tool runs, on the original question: it can answer "not found",
+  whereas the SQL tool always returns some number. The check compares only numbers and a
+  fixed list of company names, so it cannot judge wording; a legitimate sub-question that
+  adds an implicit year (e.g. "in 2025" when the user only said "last year") would be
+  dropped too, which costs that half of the answer but never invents one.
 - **`both` runs the two tools one after the other**, not in parallel: on a laptop CPU the
   local LLM is the bottleneck, so parallel calls would not be faster.
 - **No LLM in `synthesize`.** Single-source answers are returned as they are. For `both`,
@@ -236,3 +245,52 @@ Short notes on each choice, the reason, and the alternative. Updated at every st
   within 1% of the gold figure. Approximate statements ("over €11 billion" for €11,333
   million, 3% off) still do not match; small numbers (percentages, per-share amounts)
   need an exact match.
+- **Chunk size stays 500 although 1000 scored best in retrieval** (hybrid_rerank recall@5
+  0.975 vs 0.925, i.e. 2 of 40 questions). bge-small reads at most 512 tokens, so the end
+  of a 1000-token chunk is not embedded (dense recall is the same at 500 and 1000); and
+  5 chunks of 1000 tokens (~5,000 tokens) exceed the 4,096-token context used with Ollama
+  on a 16 GB laptop. The gain comes from BM25 and the reranker, not from better
+  embeddings. With 40 questions, one question is 2.5 points: small differences are noise.
+- **Retry on empty result (added after the baseline SQL run).** The baseline retry loop
+  only reacts to errors and guard rejections; in the first run every wrong query ran
+  without error, so retries changed nothing (55% with and without). A query that returns
+  no rows or only NULLs is now also sent back to the model with a generic hint (check the
+  table, the filters, the exact spelling of text values). If every attempt is empty, the
+  empty result is kept, since "no data" can be the true answer. The idea came from
+  looking at the evaluation failures, so it is reported as an extra row next to the
+  baseline (`r2e`), never in place of it, and its gain is optimistic (no held-out set).
+  Setting: `SQL_RETRY_ON_EMPTY`.
+  **Result: no gain** (55% in all three configurations). It fired on 2 questions:
+  sql_06 corrected 'GERMANY' to UPPER(country) = 'GERMANY' but then added an unwanted
+  GROUP BY month (12 rows instead of one total); sql_12 kept querying `sales_clean` for
+  cancellations three times. It also raised p95 latency from 18 s to 42 s. The option
+  stays in the code (tested) but is **off by default**: the evidence does not support
+  turning it on. The remaining errors are reasoning errors of the 3B model; the next
+  lever would be a larger model, not more retries.
+- **Validating the sub-questions of the `split` node (after the first agent run).** The
+  router sends an unsure question to `both`; `split` then has to invent a sales
+  sub-question for a question that has none, and the 3B model copies the example in its
+  prompt instead (7 wrong answers, see failure log 16). Two changes, both general: the
+  prompt now allows `NONE` for a source and forbids inventing a topic, company or year;
+  and `drop_reason()` rejects a sub-question that is not a question, or that contains a
+  number or a company name absent from the user's question (fixed company list, so the
+  check cannot raise a false alarm on wording). A dropped reports sub-question falls back
+  to the user's own question, because the reports tool can answer "not found", whereas
+  the SQL tool always returns some number. Replaying the check on the 19 recorded splits
+  of the first run: all 10 mixed questions keep both halves (no false rejection) and 8 of
+  the 9 misrouted document questions lose their invented sales half. The ninth (doc_39,
+  "What share of LVMH's 2025 revenue came from the United States?") survives, because its
+  invented sales sub-question reuses words from the question: the check catches invented
+  facts, not invented intent.
+- **Keeping the first agent run.** The fix above was written after reading the first
+  run's traces, so the first results are kept in `results/agent_v1.json` and printed in
+  the README next to the new ones. Only the 19 questions routed to `both` were re-run
+  (~35 min); the cached results of the other 41 questions are untouched, so the two runs
+  differ only where the fix applies.
+- **Hand-check sheet for the judge.** The 20 sampled judgements are graded from
+  `results/raw/judge_review.md`, written by `eval.judge`: it quotes the text of the pages
+  the answer cited (with the reference number marked), so faithfulness can be judged
+  without opening the PDFs. The sheet deliberately omits the judge's own scores, so the
+  human labels are not anchored on them; the CSV still shows them next to the cells to
+  fill, so the check is blind only if the sheet is used first. The sheet lives in
+  `results/raw/` (not committed) because it quotes report text.

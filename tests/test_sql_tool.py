@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from assistant.llm import LLMResponse, MockLLM
-from assistant.tools.sql_tool import answer_sql_question, extract_sql
+from assistant.tools.sql_tool import answer_sql_question, extract_sql, is_empty_result
 
 
 class ScriptedLLM:
@@ -66,3 +66,42 @@ def test_generate_answer_false_skips_second_call(sales_db: Path) -> None:
     llm = ScriptedLLM(["SELECT COUNT(*) FROM sales_clean"])
     a = answer_sql_question("?", llm, sales_db, generate_answer=False)
     assert a.succeeded and a.answer == "" and len(a.llm_calls) == 1
+
+
+EMPTY_SQL = "SELECT SUM(line_total) FROM sales_clean WHERE country = 'NOWHERE'"  # -> NULL
+
+
+def test_is_empty_result() -> None:
+    from assistant.tools.sql_guard import QueryResult
+
+    def qr(rows: list[tuple]) -> QueryResult:
+        return QueryResult("SELECT 1", ["x"], rows, 0.0)
+
+    assert is_empty_result(qr([]))
+    assert is_empty_result(qr([(None,), (None,)]))
+    assert not is_empty_result(qr([(None, 5)]))
+    assert not is_empty_result(qr([(0,)]))  # zero is a real answer
+
+
+def test_empty_result_is_retried_when_enabled(sales_db: Path) -> None:
+    llm = ScriptedLLM([EMPTY_SQL, "SELECT ROUND(SUM(line_total), 2) FROM sales_clean"])
+    a = answer_sql_question("?", llm, sales_db, generate_answer=False, retry_on_empty=True)
+    assert a.result is not None and a.result.rows == [(53.55,)]
+    assert (a.retries, a.empty_results) == (1, 1)
+    assert "no rows or only NULL" in llm.prompts[1]  # the feedback reached the model
+
+
+def test_empty_result_is_accepted_when_disabled(sales_db: Path) -> None:
+    llm = ScriptedLLM([EMPTY_SQL])
+    a = answer_sql_question("?", llm, sales_db, generate_answer=False)  # default: off
+    assert a.succeeded and a.result is not None and a.result.rows == [(None,)]
+    assert a.retries == 0
+
+
+def test_all_attempts_empty_keeps_last_result(sales_db: Path) -> None:
+    llm = ScriptedLLM([EMPTY_SQL] * 3)
+    a = answer_sql_question(
+        "?", llm, sales_db, max_retries=2, generate_answer=False, retry_on_empty=True
+    )
+    assert a.succeeded  # "no data" can be the true answer, so it is not a failure
+    assert (len(a.attempts), a.empty_results) == (3, 3)

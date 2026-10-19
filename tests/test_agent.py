@@ -3,7 +3,13 @@ from pathlib import Path
 
 import pytest
 
-from assistant.agent.graph import Agent, AgentConfig, parse_route, parse_split
+from assistant.agent.graph import (
+    Agent,
+    AgentConfig,
+    parse_route,
+    parse_split,
+    subquestion_is_grounded,
+)
 from assistant.agent.prompts import OUT_OF_SCOPE_ANSWER
 from assistant.ingest.chunking import Chunk
 from assistant.llm import LLMResponse, MockLLM
@@ -11,6 +17,8 @@ from assistant.retrieval.bm25 import BM25Index
 from assistant.retrieval.dense import DenseIndex
 from assistant.retrieval.retriever import Retriever
 from tests.conftest import FakeEmbedder
+
+SPLIT_MARKER = "one self-contained sub-question per source"  # identifies the split prompt
 
 
 class RoleLLM:
@@ -25,7 +33,7 @@ class RoleLLM:
     def complete(self, system: str, user: str) -> LLMResponse:
         if "Classify a user question" in system:
             kind, text = "route", f"Category: {self.route}"
-        elif "Split it into two" in system:
+        elif SPLIT_MARKER in system:
             kind, text = "split", "REPORTS: What was Kering's revenue?\nSALES: How many lines?"
         elif "SQLite SELECT query" in system:
             kind, text = "sql", "```sql\nSELECT COUNT(*) AS n FROM sales_clean\n```"
@@ -121,20 +129,101 @@ def test_both_route(make_agent) -> None:
         ("reports : a?\n  sales: b?", ("a?", "b?")),
         ("Here you go:\nREPORTS: a?", ("a?", None)),
         ("nonsense", (None, None)),
+        ("REPORTS: a?\nSALES: NONE", ("a?", None)),  # one source is enough
+        ("REPORTS: none.\nSALES: b?", (None, "b?")),
     ],
 )
 def test_parse_split(reply: str, expected: tuple) -> None:
     assert parse_split(reply) == expected
 
 
-def test_failed_split_falls_back_to_full_question(make_agent) -> None:
-    class BadSplit(RoleLLM):
-        def complete(self, system: str, user: str) -> LLMResponse:
-            if "Split it into two" in system:
-                return LLMResponse("sorry", self.model, 1, 1, 0.0)
-            return super().complete(system, user)
+@pytest.mark.parametrize(
+    ("subquestion", "grounded"),
+    [
+        ("What was the total revenue in 2010?", True),  # year taken from the question
+        ("What was the revenue of Kering?", True),
+        ("What was the total revenue in 2011?", False),  # year the user never wrote
+        ("What was Hermes' revenue in 2010?", False),  # another company
+        ("What was Hermès' revenue in 2010?", False),  # accents are ignored
+        ("How much did the shop sell?", True),  # no number, no company
+    ],
+)
+def test_subquestion_is_grounded(subquestion: str, grounded: bool) -> None:
+    question = "Compare Kering's 2010 revenue with the gift shop's revenue in 2010."
+    assert subquestion_is_grounded(subquestion, question) is grounded
 
-    r = make_agent(BadSplit("both")).ask("Compare things")
+
+class ScriptedSplit(RoleLLM):
+    """RoleLLM with a chosen reply for the split prompt."""
+
+    def __init__(self, reply: str) -> None:
+        super().__init__("both")
+        self.reply = reply
+
+    def complete(self, system: str, user: str) -> LLMResponse:
+        if SPLIT_MARKER in system:
+            self.calls.append("split")
+            return LLMResponse(self.reply, self.model, 1, 1, 0.0)
+        return super().complete(system, user)
+
+
+def test_split_none_skips_the_sales_tool(make_agent) -> None:
+    llm = ScriptedSplit("REPORTS: Who is the CEO of Kering?\nSALES: NONE")
+    r = make_agent(llm).ask("Who is the CEO of Kering?")
+    assert nodes(r) == ["route", "split", "doc_rag", "synthesize"]
+    assert r.sql is None and "gift-shop sales data" not in r.answer
+
+
+def test_split_none_skips_the_document_tool(make_agent) -> None:
+    llm = ScriptedSplit("REPORTS: NONE\nSALES: How many lines?")
+    r = make_agent(llm).ask("How many lines does the shop have?")
+    assert nodes(r) == ["route", "split", "sql_agent", "synthesize"]
+    assert r.answer == "There are 3 sales lines."
+
+
+def test_invented_subquestions_are_dropped(make_agent) -> None:
+    """The model repeats the example in its prompt instead of splitting the question."""
+    llm = ScriptedSplit(
+        "REPORTS: What was Kering's revenue in 2025?\nSALES: What was the total revenue in 2010?"
+    )
+    r = make_agent(llm).ask("Who is the Chief Executive Officer of Kering?")
+    split_step = r.trace[1]
+    assert split_step["dropped_subquestions"] == {"reports": "ungrounded", "sales": "ungrounded"}
+    assert split_step["fell_back_to_full_question"] is True
+    # Only the reports tool runs, on the user's own question.
+    assert nodes(r) == ["route", "split", "doc_rag", "synthesize"]
+    assert split_step["doc_question"] == "Who is the Chief Executive Officer of Kering?"
+    assert r.sql is None
+
+
+def test_comment_instead_of_subquestion_is_dropped(make_agent) -> None:
+    """Observed on doc_25: the model commented on the sales source instead of splitting."""
+    llm = ScriptedSplit(
+        "REPORTS: What share is made in France according to the 2025 reports?\n"
+        "SALES: (This question is not suitable for the sales database.)"
+    )
+    r = make_agent(llm).ask("What share of objects are made in France?")
+    split_step = r.trace[1]
+    assert split_step["dropped_subquestions"] == {
+        "reports": "ungrounded",  # the model added a year the user never wrote
+        "sales": "not a question",
+    }
+    assert nodes(r) == ["route", "split", "doc_rag", "synthesize"]
+    assert split_step["doc_question"] == "What share of objects are made in France?"
+
+
+def test_ungrounded_reports_part_falls_back_but_keeps_the_sales_part(make_agent) -> None:
+    llm = ScriptedSplit(
+        "REPORTS: What was Kering's revenue in 2025?\nSALES: How many lines are there?"
+    )
+    r = make_agent(llm).ask("Who runs Kering, and how many lines are there?")
+    assert r.trace[1]["dropped_subquestions"] == {"reports": "ungrounded"}
+    assert r.trace[1]["doc_question"] == "Who runs Kering, and how many lines are there?"
+    assert nodes(r) == ["route", "split", "doc_rag", "sql_agent", "synthesize"]
+
+
+def test_failed_split_falls_back_to_full_question(make_agent) -> None:
+    r = make_agent(ScriptedSplit("sorry")).ask("Compare things")
     assert r.trace[1]["parsed_ok"] is False
     assert r.trace[1]["doc_question"] == "Compare things"
 

@@ -19,14 +19,17 @@ from __future__ import annotations
 
 import argparse
 import csv
+import io
 import json
 import random
 import re
+from pathlib import Path
 from statistics import mean
 from typing import Any
 
 from assistant.llm import LLM
 from eval import common, setup
+from eval.verify import search_pattern
 
 JUDGE_SYSTEM = """You grade an answer produced by a question-answering system. Reply with \\
 JSON only: {"correct": 0 or 1, "faithful": 0 or 1}.
@@ -110,18 +113,21 @@ def run(mock: bool = False, include_unverified: bool = False) -> dict:
     }
     common.save_result(name, payload)
     if not mock:
-        write_human_sheet(valid, {r["id"]: r for r in answered}, questions)
+        by_id = {r["id"]: r for r in answered}
+        ids = write_human_sheet(valid, by_id, questions)
+        write_review_sheet(ids, by_id, questions)
     print(payload)
     return payload
 
 
 def write_human_sheet(
     judged: list[dict[str, Any]], rows: dict[str, Any], questions: dict[str, Any]
-) -> None:
+) -> list[str]:
+    """Write the CSV to fill by hand and return the ids it contains (in order)."""
     path = common.RESULTS_DIR / "judge_human_check.csv"
     if path.exists():
         print(f"{path} already exists: not overwritten (it may contain your labels).")
-        return
+        return [r["id"] for r in read_csv_any_encoding(path)]
     sample = random.Random(SEED).sample(judged, min(HUMAN_SAMPLE, len(judged)))
     with path.open("w", encoding="utf-8-sig", newline="") as f:
         w = csv.writer(f)
@@ -136,6 +142,75 @@ def write_human_sheet(
                  j["judge_correct"], j["judge_faithful"], "", ""]
             )  # fmt: skip
     print(f"Wrote {path}: fill human_correct / human_faithful with 1 or 0.")
+    return [j["id"] for j in sample]
+
+
+def highlight(text: str, gold_answer: str) -> str:
+    """Mark the gold answer's number in a cited page, as the verification tool does."""
+    return re.sub(search_pattern(gold_answer), lambda m: f">>>{m.group(0)}<<<", text, flags=re.I)
+
+
+def write_review_sheet(
+    ids: list[str],
+    rows: dict[str, Any],
+    questions: dict[str, Any],
+) -> None:
+    """Everything needed to grade the sampled answers by hand, so the PDFs stay closed.
+
+    Written to results/raw/ (not committed): it quotes the text of the cited pages.
+    """
+    path = common.RAW_DIR / "judge_review.md"
+    parts = [
+        "# Hand check of the LLM judge",
+        "",
+        f"{len(ids)} answers to grade. For each one, write 1 or 0 in the two last columns "
+        "of `results/judge_human_check.csv` (same order as below):",
+        "",
+        "- `human_correct`: does the answer state the same fact as the reference answer?",
+        "- `human_faithful`: is every fact of the answer written on the pages quoted below?",
+        "",
+        "The reference answer's number is marked `>>>like this<<<` in the quoted pages.",
+        "",
+        "The judge's own scores are deliberately NOT shown here: grade from this sheet "
+        "first, then type your two numbers into the CSV without reading its judge columns.",
+    ]
+    for n, qid in enumerate(ids, 1):
+        q, r = questions[qid], rows[qid]
+        pages = r["cited_texts"] or []
+        parts += [
+            "",
+            f"## {n}. {qid}",
+            "",
+            f"**Question:** {q['question']}",
+            "",
+            f"**Reference answer:** {q['gold_answer']}",
+            "",
+            f"**System answer:** {r['answer']}",
+            "",
+            "**Cited pages:** " + ("none" if not pages else ""),
+        ]
+        for text in pages:
+            parts += ["", "> " + highlight(text[:PAGE_CHARS], q["gold_answer"])]
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("\n".join(parts) + "\n", encoding="utf-8")
+    print(f"Wrote {path}: read it while filling the CSV.")
+
+
+def read_csv_any_encoding(path: Path) -> list[dict[str, str]]:
+    """Read a CSV saved by any spreadsheet.
+
+    Excel and WPS on Windows save CSV in the machine's code page, not UTF-8: the file
+    comes back with cp1252 bytes (0x80 for "EUR") and strict UTF-8 reading fails.
+    """
+    for encoding in ("utf-8-sig", "cp1252"):
+        try:
+            text = path.read_text(encoding=encoding)
+            break
+        except UnicodeDecodeError:
+            continue
+    else:  # pragma: no cover - last resort, never raises
+        text = path.read_text(encoding="utf-8", errors="replace")
+    return list(csv.DictReader(io.StringIO(text)))
 
 
 def human_agreement() -> dict[str, Any] | None:
@@ -143,8 +218,7 @@ def human_agreement() -> dict[str, Any] | None:
     path = common.RESULTS_DIR / "judge_human_check.csv"
     if not path.exists():
         return None
-    with path.open(encoding="utf-8-sig") as f:
-        rows = [r for r in csv.DictReader(f) if r["human_correct"] in ("0", "1")]
+    rows = [r for r in read_csv_any_encoding(path) if r["human_correct"] in ("0", "1")]
     if not rows:
         return None
     pairs = [(r[f"judge_{k}"], r[f"human_{k}"]) for r in rows for k in ("correct", "faithful")]

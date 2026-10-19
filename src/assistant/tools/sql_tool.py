@@ -3,6 +3,11 @@
 If the query is rejected by the guard or fails in SQLite, the error message is sent back
 to the LLM, which gets up to `max_retries` more attempts (default 2). The retry loop is
 evaluated with and without retries in the Stage 6 ablation.
+
+With `retry_on_empty=True`, a query that RUNS but returns nothing useful (no rows, or
+only NULL values) also triggers a retry: in the Stage 6 baseline every wrong query ran
+without error, so error-only retries never fired. If all attempts come back empty, the
+last (empty) result is kept, because "no data" can be the true answer.
 """
 
 from __future__ import annotations
@@ -16,6 +21,7 @@ from pathlib import Path
 from assistant.agent.prompts import (
     SQL_ANSWER_SYSTEM,
     SQL_ANSWER_USER,
+    SQL_EMPTY_RESULT,
     SQL_RETRY_USER,
     SQL_SYSTEM,
     SQL_USER,
@@ -44,6 +50,7 @@ class Attempt:
     sql: str
     error: str | None  # None if the query ran
     rejected_by_guard: bool = False
+    empty_result: bool = False  # ran, but returned no rows or only NULLs
 
 
 @dataclass
@@ -67,6 +74,15 @@ class SQLAnswer:
     def guard_rejections(self) -> int:
         return sum(a.rejected_by_guard for a in self.attempts)
 
+    @property
+    def empty_results(self) -> int:
+        return sum(a.empty_result for a in self.attempts)
+
+
+def is_empty_result(result: QueryResult) -> bool:
+    """True if the query returned no rows, or rows where every value is NULL."""
+    return all(v is None for row in result.rows for v in row)
+
 
 def format_rows(result: QueryResult, limit: int = ROWS_IN_PROMPT) -> str:
     return "\n".join(" | ".join(str(v) for v in row) for row in result.rows[:limit])
@@ -80,22 +96,31 @@ def answer_sql_question(
     max_rows: int = 100,
     timeout_s: float = 5.0,
     generate_answer: bool = True,
+    retry_on_empty: bool = False,
 ) -> SQLAnswer:
-    """`generate_answer=False` skips the second LLM call (evaluation only needs the rows)."""
+    """`generate_answer=False` skips the second LLM call (evaluation only needs the rows).
+
+    `retry_on_empty=True` also retries when the query returns no rows or only NULLs.
+    """
     system = SQL_SYSTEM.format(schema=load_schema())
     user = SQL_USER.format(question=question)
     attempts: list[Attempt] = []
     calls: list[LLMResponse] = []
     result: QueryResult | None = None
 
-    for _ in range(max_retries + 1):
+    for attempt_no in range(max_retries + 1):
         response = llm.complete(system, user)
         calls.append(response)
         sql = extract_sql(response.text)
         try:
-            result = run_safe_query(db_path, sql, max_rows=max_rows, timeout_s=timeout_s)
-            attempts.append(Attempt(result.sql, None))
-            break
+            ran = run_safe_query(db_path, sql, max_rows=max_rows, timeout_s=timeout_s)
+            result = ran
+            empty = retry_on_empty and is_empty_result(ran)
+            attempts.append(Attempt(ran.sql, None, empty_result=empty))
+            if not empty or attempt_no == max_retries:
+                break
+            user = SQL_RETRY_USER.format(question=question, sql=ran.sql, error=SQL_EMPTY_RESULT)
+            continue
         except SQLGuardError as e:
             attempts.append(Attempt(sql, str(e), rejected_by_guard=True))
         except sqlite3.Error as e:

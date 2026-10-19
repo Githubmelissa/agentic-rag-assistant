@@ -1,0 +1,48 @@
+{
+  "description": "Execution accuracy on verified SQL questions.",
+  "llm": "ollama:qwen2.5:3b",
+  "n_questions": 20,
+  "include_unverified": false,
+  "mock": false,
+  "rows": [
+    {
+      "config": "r2",
+      "max_retries": 2,
+      "retry_on_empty": false,
+      "n": 20,
+      "execution_accuracy": 0.55,
+      "query_ran": 1,
+      "guard_rejection_rate": 0.0,
+      "questions_with_retry": 0,
+      "mean_retries": 0,
+      "median_s": 11.16,
+      "p95_s": 18.33
+    },
+    {
+      "config": "r0",
+      "max_retries": 0,
+      "retry_on_empty": false,
+      "n": 20,
+      "execution_accuracy": 0.55,
+      "query_ran": 1,
+      "guard_rejection_rate": 0.0,
+      "questions_with_retry": 0,
+      "mean_retries": 0,
+      "median_s": 10.93,
+      "p95_s": 14.28
+    },
+    {
+      "config": "r2e",
+      "max_retries": 2,
+      "retry_on_empty": true,
+      "n": 20,
+      "execution_accuracy": 0.55,
+      "query_ran": 1,
+      "guard_rejection_rate": 0.0,
+      "questions_with_retry": 2,
+      "mean_retries": 0.15,
+      "median_s": 11.23,
+      "p95_s": 42.25
+    }
+  ]
+}

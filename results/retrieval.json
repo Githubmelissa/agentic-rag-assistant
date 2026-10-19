@@ -1,0 +1,127 @@
+{
+  "description": "Page-level retrieval metrics on verified document questions.",
+  "n_questions": 40,
+  "include_unverified": false,
+  "rows": [
+    {
+      "chunk_size": 300,
+      "mode": "dense",
+      "n": 40,
+      "recall@3": 0.725,
+      "recall@5": 0.75,
+      "recall@10": 0.85,
+      "mrr": 0.549,
+      "median_latency_s": 0.053
+    },
+    {
+      "chunk_size": 300,
+      "mode": "bm25",
+      "n": 40,
+      "recall@3": 0.7,
+      "recall@5": 0.85,
+      "recall@10": 0.975,
+      "mrr": 0.522,
+      "median_latency_s": 0.012
+    },
+    {
+      "chunk_size": 300,
+      "mode": "hybrid",
+      "n": 40,
+      "recall@3": 0.825,
+      "recall@5": 0.9,
+      "recall@10": 0.95,
+      "mrr": 0.719,
+      "median_latency_s": 0.062
+    },
+    {
+      "chunk_size": 300,
+      "mode": "hybrid_rerank",
+      "n": 40,
+      "recall@3": 0.825,
+      "recall@5": 0.925,
+      "recall@10": 1.0,
+      "mrr": 0.741,
+      "median_latency_s": 2.076
+    },
+    {
+      "chunk_size": 500,
+      "mode": "dense",
+      "n": 40,
+      "recall@3": 0.625,
+      "recall@5": 0.625,
+      "recall@10": 0.8,
+      "mrr": 0.577,
+      "median_latency_s": 0.05
+    },
+    {
+      "chunk_size": 500,
+      "mode": "bm25",
+      "n": 40,
+      "recall@3": 0.8,
+      "recall@5": 0.875,
+      "recall@10": 1.0,
+      "mrr": 0.659,
+      "median_latency_s": 0.007
+    },
+    {
+      "chunk_size": 500,
+      "mode": "hybrid",
+      "n": 40,
+      "recall@3": 0.85,
+      "recall@5": 0.9,
+      "recall@10": 0.95,
+      "mrr": 0.743,
+      "median_latency_s": 0.061
+    },
+    {
+      "chunk_size": 500,
+      "mode": "hybrid_rerank",
+      "n": 40,
+      "recall@3": 0.825,
+      "recall@5": 0.925,
+      "recall@10": 1.0,
+      "mrr": 0.694,
+      "median_latency_s": 3.606
+    },
+    {
+      "chunk_size": 1000,
+      "mode": "dense",
+      "n": 40,
+      "recall@3": 0.625,
+      "recall@5": 0.625,
+      "recall@10": 0.775,
+      "mrr": 0.577,
+      "median_latency_s": 0.05
+    },
+    {
+      "chunk_size": 1000,
+      "mode": "bm25",
+      "n": 40,
+      "recall@3": 0.8,
+      "recall@5": 0.925,
+      "recall@10": 0.975,
+      "mrr": 0.652,
+      "median_latency_s": 0.004
+    },
+    {
+      "chunk_size": 1000,
+      "mode": "hybrid",
+      "n": 40,
+      "recall@3": 0.825,
+      "recall@5": 0.85,
+      "recall@10": 0.95,
+      "mrr": 0.71,
+      "median_latency_s": 0.054
+    },
+    {
+      "chunk_size": 1000,
+      "mode": "hybrid_rerank",
+      "n": 40,
+      "recall@3": 0.85,
+      "recall@5": 0.975,
+      "recall@10": 0.975,
+      "mrr": 0.757,
+      "median_latency_s": 3.579
+    }
+  ]
+}

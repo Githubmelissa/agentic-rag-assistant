@@ -57,14 +57,24 @@ def sql_section(r: dict[str, Any] | None) -> str:
     if not r:
         return "### Text-to-SQL\n\nTBD (run `python -m eval.run_sql`)."
     rows = [
-        [x["max_retries"], pct(x["execution_accuracy"]), pct(x["query_ran"]),
+        [x["max_retries"], "yes" if x.get("retry_on_empty") else "no",
+         pct(x["execution_accuracy"]), pct(x["query_ran"]),
          pct(x["guard_rejection_rate"]), x["questions_with_retry"], f"{x['median_s']} s"]
         for x in r["rows"]
     ]  # fmt: skip
+    note = (
+        "\n\nThe first two rows are the baseline. Retry-on-empty-result (last row) was "
+        "added after looking at the baseline failures, on the same questions, so its gain "
+        "is optimistic: there is no separate held-out set."
+        if any(x.get("retry_on_empty") for x in r["rows"])
+        else ""
+    )
     return (
         f"### Text-to-SQL ({r['n_questions']} {qualifier(r)} questions, {r['llm']})\n\n"
-        + table(["max retries", "execution accuracy", "query ran", "guard rejections "
-                 "(share of attempts)", "questions with a retry", "median latency"], rows)
+        + table(["max retries", "retry on empty result", "execution accuracy", "query ran",
+                 "guard rejections (share of attempts)", "questions with a retry",
+                 "median latency"], rows)
+        + note
     )  # fmt: skip
 
 
@@ -77,6 +87,23 @@ def routing_section(r: dict[str, Any] | None) -> str:
         f"Overall accuracy: **{pct(r['accuracy'])}** "
         f"(unparseable router replies: {r['unparsed_replies']}).\n\n"
         + table(["expected route", "n", "accuracy"], rows)
+    )
+
+
+def previous_agent_note() -> str:
+    """Compare with the kept results of the first agent run, if any (results/agent_v1.json)."""
+    v1 = common.load_result("agent_v1")
+    if not v1:
+        return ""
+    return (
+        f"\n\nFirst run, before the split-validation fix ({v1['llm']}, same questions): "
+        f"document answers {pct(v1['documents']['answer_match'])}, "
+        f"mixed reports part {pct(v1['mixed']['reports_part_match'])}, "
+        f"mixed SQL part {pct(v1['mixed']['sql_part_match'])}, "
+        f"out-of-scope refusals {pct(v1['out_of_scope']['refusal_rate'])}. "
+        "The fix drops sub-questions that the split model invents (see docs/decisions.md); "
+        "it was written after reading the first run's traces, so only the questions routed "
+        "to `both` were re-run."
     )
 
 
@@ -119,6 +146,7 @@ def agent_section(a: dict[str, Any] | None, j: dict[str, Any] | None) -> str:
         + table(["route", "n", "median", "p95"], lat)
         + f"\n\nTokens per query (input + output, all LLM calls): median {t['median']}, "
         f"mean {t['mean']} (n = {t['n']})."
+        + previous_agent_note()
     )
 
 

@@ -1,0 +1,11 @@
+{
+  "description": "LLM-as-judge on answered document questions (same local model).",
+  "llm": "ollama:qwen2.5:3b",
+  "include_unverified": false,
+  "mock": false,
+  "n_answered": 35,
+  "n_judged": 35,
+  "unparsed": 0,
+  "correct_rate": 0.629,
+  "faithful_rate": 0.543
+}

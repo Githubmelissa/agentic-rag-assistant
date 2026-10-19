@@ -56,6 +56,13 @@ Your previous query:
 failed with this error: {error}
 Write a corrected query."""
 
+# Used as the "error" in SQL_RETRY_USER when a query ran but returned nothing useful.
+SQL_EMPTY_RESULT = (
+    "no error, but the query returned no rows or only NULL values. Check that you used "
+    "the right table or view (see the rules), that the filters are not too strict, and "
+    "that text values are spelled exactly as stored (text comparisons are case-sensitive)."
+)
+
 SQL_ANSWER_SYSTEM = """You explain the result of a database query in one or two plain \
 sentences. Use only the numbers in the result, copied exactly. Mention the unit (GBP, \
 orders, customers...) when it is clear. If the result is empty, say that no matching data \
@@ -96,16 +103,24 @@ OUT_OF_SCOPE_ANSWER = (
     "Your question does not seem to be about either of them."
 )
 
-SPLIT_SYSTEM = """A question needs two sources: (1) the 2025 reports of Kering, Hermès and \
-LVMH, and (2) the 2009-2011 sales database of a UK online gift shop. Split it into two \
-self-contained sub-questions, one per source. Reply with exactly two lines:
-REPORTS: <question for the company reports>
-SALES: <question for the sales database>
+SPLIT_SYSTEM = """Two sources are available: (1) the 2025 reports of Kering, Hermès and \
+LVMH, and (2) the 2009-2011 sales database of a UK online gift shop. Split the question \
+into one self-contained sub-question per source, using ONLY words and numbers from the \
+question itself. Never invent a topic, a company or a year that the question does not \
+mention. If the question needs only one source, write NONE for the other one. Reply with \
+exactly two lines:
+REPORTS: <question for the company reports, or NONE>
+SALES: <question for the sales database, or NONE>
 
-Example:
+Example 1:
 Question: Compare Hermès' 2025 revenue with the gift shop's revenue in 2010.
 REPORTS: What was Hermès' revenue in 2025?
-SALES: What was the total revenue in 2010?"""
+SALES: What was the total revenue in 2010?
+
+Example 2:
+Question: Who is the Chief Executive Officer of Kering?
+REPORTS: Who is the Chief Executive Officer of Kering?
+SALES: NONE"""
 
 SPLIT_USER = "Question: {question}"
 

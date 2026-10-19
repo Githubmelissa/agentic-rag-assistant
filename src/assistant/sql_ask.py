@@ -47,6 +47,7 @@ def ask_once(question: str, llm: LLM, s: Settings) -> None:
             llm,
             s.sales_db_path,
             max_retries=s.sql_max_retries,
+            retry_on_empty=s.sql_retry_on_empty,
             max_rows=s.sql_row_limit,
             timeout_s=s.sql_timeout_seconds,
         )

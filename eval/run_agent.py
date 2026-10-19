@@ -141,6 +141,7 @@ def run(mock: bool = False, include_unverified: bool = False, limit: int | None 
                 config = AgentConfig(
                     top_k=s.answer_top_k,
                     sql_max_retries=s.sql_max_retries,
+                    sql_retry_on_empty=s.sql_retry_on_empty,
                     sql_max_rows=s.sql_row_limit,
                     sql_timeout_s=s.sql_timeout_seconds,
                 )

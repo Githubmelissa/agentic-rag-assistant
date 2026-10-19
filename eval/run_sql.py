@@ -1,5 +1,12 @@
 """SQL evaluation: execution accuracy, with and without the retry loop.
 
+Three configurations (name: max retries, retry on empty result):
+  r2  : 2, no   -- Stage 6 baseline, retry only on errors / guard rejections
+  r0  : 0, no   -- no retry at all (ablation)
+  r2e : 2, yes  -- also retry when the query returns no rows or only NULLs. This was
+                   added AFTER seeing the baseline failures, so it is reported next to
+                   the baseline, never instead of it.
+
 The gold query and the predicted query are both executed; they match if they return the
 same rows (see metrics.results_match). We also count guard rejections and retries.
 Only the SQL step is evaluated here (no answer sentence), to save LLM time.
@@ -20,10 +27,17 @@ from assistant.tools.sql_guard import run_safe_query
 from assistant.tools.sql_tool import answer_sql_question
 from eval import common, metrics, setup
 
-RETRY_SETTINGS = (2, 0)  # with retry loop (default) and without (ablation)
+# (config name, max retries, retry on empty result)
+CONFIGS: tuple[tuple[str, int, bool], ...] = (
+    ("r2", 2, False),
+    ("r0", 0, False),
+    ("r2e", 2, True),
+)
 
 
-def evaluate_question(q: dict[str, Any], llm: LLM, max_retries: int) -> dict[str, Any]:
+def evaluate_question(
+    q: dict[str, Any], llm: LLM, max_retries: int, retry_on_empty: bool = False, name: str = ""
+) -> dict[str, Any]:
     s = setup.settings()
     gold = run_safe_query(s.sales_db_path, q["gold_sql"], s.sql_row_limit, 60.0)
     t0 = time.perf_counter()
@@ -35,20 +49,23 @@ def evaluate_question(q: dict[str, Any], llm: LLM, max_retries: int) -> dict[str
         max_rows=s.sql_row_limit,
         timeout_s=s.sql_timeout_seconds,
         generate_answer=False,
+        retry_on_empty=retry_on_empty,
     )
     latency = time.perf_counter() - t0
     match = a.result is not None and metrics.results_match(
         a.result.rows, gold.rows, q.get("ordered", False)
     )
     return {
-        "id": f"{q['id']}|r{max_retries}",
+        "id": f"{q['id']}|{name or f'r{max_retries}'}",
         "question_id": q["id"],
         "max_retries": max_retries,
+        "retry_on_empty": retry_on_empty,
         "match": match,
         "succeeded": a.succeeded,
         "attempts": len(a.attempts),
         "retries": a.retries,
         "guard_rejections": a.guard_rejections,
+        "empty_results": a.empty_results,
         "final_sql": a.sql,
         "errors": [x.error for x in a.attempts if x.error],
         "pred_first_rows": [list(map(str, r)) for r in (a.result.rows[:5] if a.result else [])],
@@ -81,18 +98,19 @@ def run(mock: bool = False, include_unverified: bool = False, limit: int | None 
     llm = setup.llm(mock)
     cache = common.Cache("sql_mock" if mock else "sql")
     table = []
-    for retries in RETRY_SETTINGS:
+    for name, retries, on_empty in CONFIGS:
         rows = []
         for q in questions:
-            key = f"{q['id']}|r{retries}"
+            key = f"{q['id']}|{name}"
             if key not in cache:
                 try:
-                    cache.add(evaluate_question(q, llm, retries))
+                    cache.add(evaluate_question(q, llm, retries, on_empty, name))
                 except sqlite3.Error as e:
                     raise SystemExit(f"Gold SQL of {q['id']} failed: {e}") from e
                 print(f"  {key}: match={cache.rows[key]['match']}")
             rows.append(cache.rows[key])
-        agg = {"max_retries": retries, **aggregate(rows)}
+        agg = {"config": name, "max_retries": retries, "retry_on_empty": on_empty,
+               **aggregate(rows)}  # fmt: skip
         table.append(agg)
         print(agg)
     payload = {

@@ -1,0 +1,49 @@
+{
+  "description": "End-to-end agent results on verified document, mixed and OOS questions.",
+  "llm": "ollama:qwen2.5:3b",
+  "include_unverified": false,
+  "mock": false,
+  "documents": {
+    "n": 40,
+    "answer_match": 0.6,
+    "cites_gold_page": 0.575,
+    "said_not_found": 0.05
+  },
+  "mixed": {
+    "n": 10,
+    "routed_both": 1,
+    "reports_part_match": 0.8,
+    "sql_part_match": 0.7
+  },
+  "out_of_scope": {
+    "n": 10,
+    "refusal_rate": 1
+  },
+  "latency_by_route": {
+    "both": {
+      "n": 19,
+      "median_s": 133.2,
+      "p95_s": 180.85
+    },
+    "documents": {
+      "n": 31,
+      "median_s": 117.61,
+      "p95_s": 155.32
+    },
+    "out_of_scope": {
+      "n": 9,
+      "median_s": 3.48,
+      "p95_s": 4.26
+    },
+    "sales_data": {
+      "n": 1,
+      "median_s": 25.41,
+      "p95_s": 25.41
+    }
+  },
+  "tokens_per_query": {
+    "n": 60,
+    "median": 2929.0,
+    "mean": 2697.6
+  }
+}

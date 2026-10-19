@@ -1,0 +1,39 @@
+{
+  "description": "Router accuracy against the labelled route of each verified question.",
+  "llm": "ollama:qwen2.5:3b",
+  "include_unverified": false,
+  "mock": false,
+  "n": 80,
+  "accuracy": 0.75,
+  "unparsed_replies": 0,
+  "per_route": {
+    "documents": {
+      "n": 40,
+      "accuracy": 0.7
+    },
+    "sales_data": {
+      "n": 20,
+      "accuracy": 0.75
+    },
+    "both": {
+      "n": 10,
+      "accuracy": 1
+    },
+    "out_of_scope": {
+      "n": 10,
+      "accuracy": 0.7
+    }
+  },
+  "confusion": {
+    "both -> both": 10,
+    "documents -> both": 9,
+    "documents -> documents": 28,
+    "documents -> out_of_scope": 2,
+    "documents -> sales_data": 1,
+    "out_of_scope -> documents": 3,
+    "out_of_scope -> out_of_scope": 7,
+    "sales_data -> both": 4,
+    "sales_data -> out_of_scope": 1,
+    "sales_data -> sales_data": 15
+  }
+}
