@@ -215,3 +215,24 @@ Short notes on each choice, the reason, and the alternative. Updated at every st
   where it stopped.
 - **The SQL evaluation skips the answer sentence** (`generate_answer=False`): execution
   accuracy only needs the rows, and it halves the LLM calls.
+- **Verification found 4 flawed SQL items (out of 20), fixed before any run:** three
+  ambiguous questions ("different countries" when the field contains 'Unspecified' and
+  'European Community'; a cancellation total whose sign was not stated; "average unit
+  price", which can mean per line 3.23, per unit sold 1.82 or per product 3.80) were
+  reworded; and the schema notes told the model to subtract *all* cancellation lines for
+  net revenue, although some are fees (AMAZONFEE -£182k) rather than cancelled sales:
+  the rule now says product cancellations only. Also, the scoring now treats '12' and 12
+  as equal (strftime returns text).
+- **Document set verification (40 items):** 13 gold-page lists corrected by hand: wrong
+  pages removed (e.g. doc_02 p.66, where 1,631 is Eyewear *revenue*, not operating
+  income; doc_06 p.393, which shows the dividend split by payment date, not the €3.00
+  ordinary dividend; name pages that only mention a person in passing or in a former
+  role) and missing pages added where the fact is worded differently ("75% of
+  production" vs "75% of objects"; "€80.8bn" vs "€80.8 billion"). Two questions were
+  ambiguous between growth at constant and at current exchange rates and were reworded.
+  The mixed questions reuse the verified document answers and pages.
+- **Billions count in the automatic answer check:** the reports write "€16 billion" for
+  €16,002 million, so an amount in billions matches when, converted to millions, it is
+  within 1% of the gold figure. Approximate statements ("over €11 billion" for €11,333
+  million, 3% off) still do not match; small numbers (percentages, per-share amounts)
+  need an exact match.

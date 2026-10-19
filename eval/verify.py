@@ -26,7 +26,7 @@ import pymupdf
 
 from assistant.config import get_settings
 from assistant.tools.sql_guard import SQLGuardError, run_safe_query
-from eval import common, metrics
+from eval import common
 
 SNIPPET = 300
 
@@ -39,15 +39,13 @@ def page_text(source: str, page: int) -> str:
 
 
 def search_pattern(gold_answer: str) -> str:
-    """Regex for the answer's headline number ('14675' also matches '14,675'), or its first
-    word for a name."""
-    key = metrics.key_number(gold_answer)
-    if key and "." in key:
-        return re.escape(key)
-    if key:
-        return (
-            ",?".join(re.escape(d) for d in key.split(".")[0]) if len(key) > 3 else re.escape(key)
-        )
+    """Regex for the answer's first number as written ('14,675' also matches '14675'; '3.00'
+    stays '3.00'), never matching inside a longer number; else the first word (names)."""
+    m = re.search(r"\d[\d,]*(?:\.\d+)?", gold_answer)
+    if m:
+        number = re.escape(m.group(0)).replace(",", ",?")
+        number = re.sub(r"\\\.0+$", r"(?:\\.0+)?", number)  # '18.00' also matches '€18'
+        return rf"(?<![\d.,]){number}(?![\d]|[.,]\d)"
     return re.escape(re.findall(r"\w+", gold_answer)[0])
 
 

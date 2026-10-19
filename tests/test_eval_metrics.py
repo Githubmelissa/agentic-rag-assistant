@@ -31,6 +31,12 @@ def test_results_match_exact_and_tolerant() -> None:
     assert not metrics.results_match([(8532,)], [(3510,)])
 
 
+def test_results_match_numbers_stored_as_text() -> None:
+    assert metrics.results_match([(12,)], [("12",)])  # CAST(strftime(...)) vs strftime(...)
+    assert metrics.results_match([("2011-11",)], [("2011-11",)])
+    assert not metrics.results_match([("13",)], [("12",)])
+
+
 def test_results_match_allows_extra_columns() -> None:
     pred = [("2011-11", 1_161_817.38)]  # month and revenue
     gold = [("2011-11",)]  # month only
@@ -63,6 +69,23 @@ def test_number_match_uses_headline_number() -> None:
     assert metrics.number_match("Revenue was €14,675 million [k p.13].", gold)
     assert not metrics.number_match("Revenue was €16,874 million.", gold)
     assert metrics.number_match("Luca de Meo", "Luca de Meo") is None  # no number
+
+
+@pytest.mark.parametrize(
+    ("answer", "gold", "expected"),
+    [
+        ("Revenue was €16 billion [h p.8].", "€16,002 million", True),
+        ("Net profit was €4.5 billion.", "€4,524 million", True),
+        ("Operating income: €6.6bn.", "€6,569 million", True),
+        ("Revenue was €17 billion.", "€16,002 million", False),  # 6% off
+        ("Free cash flow was over €11 billion.", "€11,333 million", False),  # 3% off
+        ("The margin was 11 billion.", "11.1%", False),  # small numbers: exact only
+    ],
+)
+def test_number_match_accepts_billions_within_rounding(
+    answer: str, gold: str, expected: bool
+) -> None:
+    assert metrics.number_match(answer, gold) is expected
 
 
 def test_name_match() -> None:
@@ -103,3 +126,19 @@ def test_update_readme_replaces_only_the_results_block(tmp_path: Path) -> None:
     text = readme.read_text(encoding="utf-8")
     assert "new table" in text and "old" not in text
     assert text.startswith("# Title") and text.endswith("## After\n")
+
+
+def test_verify_search_pattern_does_not_match_inside_numbers() -> None:
+    import re
+
+    from eval.verify import search_pattern
+
+    p = search_pattern("€3.00 per share")
+    assert re.search(p, "dividend €3.00 | €1.00")
+    assert not re.search(p, "revenue 1,631 and 13% and 3,675")
+    assert re.search(search_pattern("€18.00 per share"), "dividend per share of €18. After")
+    p = search_pattern("92%")
+    assert re.search(p, "made up 92% of sales")
+    assert not re.search(p, "revenue 5,992 million")
+    p = search_pattern("€14,675 million")
+    assert re.search(p, "Revenue 14,675 16,874") and re.search(p, "total 14675")

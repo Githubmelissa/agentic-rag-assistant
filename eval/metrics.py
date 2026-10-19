@@ -51,7 +51,11 @@ def _norm(value: object) -> object:
     if isinstance(value, int | float):
         return round(float(value), 2)  # 3 and 3.0 compare equal
     if isinstance(value, str):
-        return value.strip()
+        text = value.strip()
+        try:  # '12' (strftime returns text) and 12 are the same answer
+            return round(float(text), 2)
+        except ValueError:
+            return text
     return value
 
 
@@ -127,13 +131,31 @@ def key_number(gold_answer: str) -> str | None:
     return nums[0] if nums else None
 
 
+_BILLION = re.compile(r"(\d[\d,]*(?:\.\d+)?)\s*(?:bn|billion)\b", re.IGNORECASE)
+BILLION_TOLERANCE = (
+    0.01  # "€16 billion" for €16,002 million: 0.01% off; "€4.5 billion" for 4,524: 0.5%
+)
+
+
 def number_match(answer: str, gold_answer: str) -> bool | None:
     """True if the gold answer's headline number appears in the answer; None if the gold
-    answer has no number (e.g. a person's name), so the check does not apply."""
+    answer has no number (e.g. a person's name), so the check does not apply.
+
+    An amount written in billions also counts when, converted to millions, it is within 1% of
+    the gold figure (the reports themselves write "€16 billion" for €16,002 million)."""
     key = key_number(gold_answer)
     if key is None:
         return None
-    return key in numbers_in(answer)
+    if key in numbers_in(answer):
+        return True
+    gold_value = float(key)
+    if gold_value < 100:  # small numbers (percentages, per-share amounts): exact match only
+        return False
+    for raw in _BILLION.findall(answer):
+        millions = float(raw.replace(",", "")) * 1000
+        if abs(millions - gold_value) <= BILLION_TOLERANCE * gold_value:
+            return True
+    return False
 
 
 def name_match(answer: str, gold_answer: str) -> bool:

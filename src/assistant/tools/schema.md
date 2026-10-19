@@ -32,8 +32,10 @@ unit_price > 0. Same columns as `sales`.
 - A product is identified by stock_code (the same product can have several descriptions):
   GROUP BY stock_code and show MAX(description) as its name.
 - `sales_clean` gives GROSS sales. Some orders were cancelled later; for NET sales or
-  quantities, add the cancellation lines of `sales` (they have negative quantity and
-  line_total) to the gross figures.
+  quantities, add the cancellation lines of PRODUCTS to the gross figures:
+  `sales` rows with is_cancelled = 1 AND is_product = 1 (negative quantity and
+  line_total). Cancellation lines with is_product = 0 are fees and adjustments
+  (e.g. AMAZONFEE, manual entries), not cancelled sales.
 - Use `sales_clean` unless the question is about cancellations, returns, postage or fees.
 - Filter dates with string comparison, e.g. invoice_date >= '2011-01-01' AND
   invoice_date < '2012-01-01'; group by month with strftime('%Y-%m', invoice_date).
