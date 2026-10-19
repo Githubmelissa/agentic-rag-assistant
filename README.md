@@ -1,12 +1,33 @@
 # Agentic RAG Assistant for Company Reports and Sales Data
 
-> Status: **in progress** (Stage 7 of 8: service, container, CI).
+> Status: **complete** (Stage 8 of 8). Built stage by stage; every number below
+> was produced by the scripts in `eval/`.
 
 An assistant that answers business questions from two sources and shows its work:
 
 1. **Document RAG** over public company reports, with cited page numbers.
 2. **Data agent** that answers questions about a retail sales table with safe, read-only SQL.
 3. **Router agent (LangGraph)** that picks the right tool (documents, SQL, both, or refuse).
+
+It runs entirely on a laptop with a free local model (Ollama, `qwen2.5:3b`), and it is
+measured rather than demonstrated: 80 evaluation questions, each checked by hand before
+use, and a failure log of every real bug found on the way (`docs/failure_log.md`).
+
+**Measured on those 80 questions** (details and method in [Evaluation](#evaluation)):
+
+| | |
+|---|---|
+| Right page found (hybrid search + reranking, top 5) | 92% |
+| Document questions answered with the right number or name | 60% |
+| SQL questions returning the right rows | 55% |
+| Questions outside the data that were refused | 100% (10/10) |
+| Time per answer (laptop CPU, 3B model) | about 2 minutes |
+
+What those numbers are worth, and what I would fix first, is in
+[Limitations](#limitations-and-what-i-would-do-next).
+
+Architecture diagram and node-by-node walkthrough: [`docs/architecture.md`](docs/architecture.md).
+Design decisions, with the reasoning behind each one: [`docs/decisions.md`](docs/decisions.md).
 
 ## Quickstart (development)
 
@@ -255,6 +276,62 @@ Tokens per query (input + output, all LLM calls): median 2929.0, mean 2697.6 (n 
 
 First run, before the split-validation fix (ollama:qwen2.5:3b, same questions): document answers 52%, mixed reports part 80%, mixed SQL part 70%, out-of-scope refusals 100%. The fix drops sub-questions that the split model invents (see docs/decisions.md); it was written after reading the first run's traces, so only the questions routed to `both` were re-run.
 <!-- RESULTS:END -->
+
+
+## Project layout
+
+```
+src/assistant/
+  ingest/      PDF -> text blocks -> chunks -> Chroma (dense) + BM25 (keywords)
+  retrieval/   the four search modes: dense, bm25, hybrid (RRF), hybrid + reranking
+  tools/       doc_search (answer with citations), sql_guard (safety), sql_tool
+  agent/       the LangGraph graph (route -> split -> doc_rag / sql_agent -> synthesize)
+  llm.py       one interface, four providers (mock, Ollama, Groq, OpenAI-compatible)
+  api.py       FastAPI service
+eval/          the measuring scripts; report.py writes the tables in this README
+data/eval/     the 80 evaluation questions, each marked verified by hand
+docs/          architecture, decisions, failure log, data notes, sample traces
+tests/         172 tests; no model, no network
+```
+
+## Limitations and what I would do next
+
+**What the numbers do not say.** Each set is small: 40 document questions, 20 SQL, 10
+mixed, 10 out of scope. One document question is worth 2.5 points, so a 2-point difference
+is noise. The same question can also give a different answer on two runs (one mixed
+question flipped between the two agent runs), because the model is generating text, not
+looking up a table. Treat every figure as "about", not "exactly".
+
+**Where the errors actually come from.** Retrieval finds a correct page for 92% of the
+document questions, but only 60% of the answers carry the right number. Reading the wrong
+cell of a dense financial table is the single biggest error source: the 2023 column
+instead of 2025, the parent company instead of the group, another company's figure. The
+same weakness explains the 55% on SQL: the rules it needs are written in the schema notes,
+and a 3B model does not apply them reliably.
+
+**The faithfulness numbers are the least reliable.** The LLM judge agreed with my own
+reading on 90% of correctness decisions but only 70% of faithfulness ones (20 judgements
+checked by hand). Read "faithful to cited pages" as an indication, not a measurement.
+
+**Scope.** Three reports, one sector, one year; the sales data stops in December 2011, so
+"what is happening now" has no meaning here. Tables are read as flattened text, not as
+tables. Charts and images in the PDFs are ignored. The API has no authentication and no
+rate limit and answers one question at a time; the Docker image is built in CI but has
+never been run against the real indexes.
+
+**What I would do next, in order of expected gain:**
+
+1. **A larger answering model.** Most remaining errors are reading errors, not retrieval
+   errors. The same pipeline with a 7-8B model (or a free hosted tier) should move the
+   answer accuracy well before any further tuning of the retrieval does.
+2. **Table-aware extraction.** Parsing the financial tables into rows and columns, instead
+   of flattening them into a paragraph, attacks the biggest error class directly.
+3. **Check the answer against its citation at answer time.** The evaluation already
+   measures whether a number appears on the cited page; doing the same check in the
+   pipeline would let the assistant say "I am not sure" instead of stating a wrong figure.
+4. **A cheap router before the LLM.** Three valid questions out of 80 were refused as out
+   of scope. Simple rules ("gift shop", "revenue in 2011") would catch those for free.
+5. **Bigger evaluation sets and repeated runs**, to replace single numbers with ranges.
 
 ## License
 

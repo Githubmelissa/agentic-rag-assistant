@@ -4,14 +4,20 @@ Nothing in `data/raw/` is committed. Download the sources below and place them t
 
 ## Company reports (RAG corpus)
 
-| File name in `data/raw/` | Company / report | Source URL | Downloaded on | Terms of use checked |
-|---|---|---|---|---|
-| `kering_urd_2025.pdf` | Kering, 2025 Universal Registration Document (516 pages) | TBD | 2026-10-18 | TBD |
-| `hermes_urd_2025.pdf` | Hermès International, 2025 Universal Registration Document (535 pages) | TBD | 2026-10-18 | TBD |
-| `lvmh_annual_report_2025.pdf` | LVMH, 2025 Annual Report (184 pages) | TBD | 2026-10-18 | TBD |
+Public investor-relations publications, downloaded by hand from each company's own
+website. **The PDFs are not redistributed in this repository**: download them yourself and
+put them in `data/raw/` under exactly these file names, because the file name is the
+`source` used in every citation.
 
-Downloaded from each company's investor-relations website. The PDFs are not redistributed
-in this repository.
+| File name in `data/raw/` | Company / report | Pages | Downloaded from | Downloaded on |
+|---|---|---|---|---|
+| `kering_urd_2025.pdf` | Kering, 2025 Universal Registration Document (filed with the AMF on 21 April 2026, ref. D.26-0266) | 516 | FILL_KERING | 2026-10-18 |
+| `hermes_urd_2025.pdf` | Hermès International, 2025 Universal Registration Document | 535 | FILL_HERMES | 2026-10-18 |
+| `lvmh_annual_report_2025.pdf` | LVMH, 2025 Annual Report | 184 | FILL_LVMH | 2026-10-18 |
+
+Each company publishes these documents freely for shareholders and the public. This
+project reads them locally and quotes short passages with their page numbers; it does not
+republish them.
 
 ## Sales data
 
