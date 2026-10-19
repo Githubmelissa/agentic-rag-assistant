@@ -41,6 +41,15 @@ api = [
     "uvicorn==0.54.0",
 ]
 all = ["agentic-rag-assistant[rag,sql,agent,api,eval]"]
+# What continuous integration installs: every package the tests import, but not the
+# PyTorch models. The tests use fake embedders and rerankers, so CI needs no torch and
+# runs in about a minute instead of several.
+ci = [
+    "agentic-rag-assistant[sql,agent,api,eval,dev]",
+    "pymupdf==1.28.2",
+    "chromadb==1.5.9",
+    "rank-bm25==0.2.2",
+]
 eval = ["matplotlib==3.11.2"]
 dev = [
     "pytest==9.1.1",

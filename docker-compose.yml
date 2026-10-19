@@ -1,0 +1,34 @@
+# Start the API:  docker compose up --build   ->  http://localhost:8000/docs
+#
+# Ollama keeps running on the host (the model is already downloaded there, and a container
+# would download it again), so the API reaches it through host.docker.internal.
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      # Values come from your .env file; the defaults after ":-" are used when it has none.
+      LLM_PROVIDER: ${LLM_PROVIDER:-ollama}
+      LLM_MODEL: ${LLM_MODEL:-qwen2.5:3b}
+      LLM_NUM_CTX: ${LLM_NUM_CTX:-4096}
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
+    extra_hosts:
+      # Needed on Linux; already defined on Docker Desktop (Windows, macOS).
+      - "host.docker.internal:host-gateway"
+    volumes:
+      # Read-only: the container must never modify the indexes or the sales database.
+      - ./indexes:/app/indexes:ro
+      - ./data:/app/data:ro
+      - ./logs:/app/logs
+      # The embedding and reranking models are downloaded once, then kept in this volume.
+      - huggingface-cache:/home/app/.cache/huggingface
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+
+volumes:
+  huggingface-cache:

@@ -294,3 +294,44 @@ Short notes on each choice, the reason, and the alternative. Updated at every st
   human labels are not anchored on them; the CSV still shows them next to the cells to
   fill, so the check is blind only if the sheet is used first. The sheet lives in
   `results/raw/` (not committed) because it quotes report text.
+
+## Stage 7 - service, container, CI
+
+- **FastAPI over Flask**: the request and response models are the pydantic models already
+  used for the settings, so validation and the OpenAPI page at `/docs` come for free. The
+  interactive page is also the cheapest demo of the project for someone who will not clone
+  it.
+- **The agent is built once, at startup** (FastAPI `lifespan`), not per request: loading
+  the embedding and reranking models takes several seconds and a few hundred MB of RAM.
+- **A broken setup does not kill the app**: if the indexes or the LLM are missing, the API
+  still starts, `/health` reports the exact error and `/ask` answers 503. A container that
+  exits at boot tells the user nothing; this one says "build the indexes first".
+- **One question at a time**, with a lock, and `429` for a second question instead of a
+  queue: with a 3B model on a laptop CPU, two parallel answers are not twice as fast, they
+  are both slow, and Ollama would load a second context (the out-of-memory crash of Stage
+  3). The endpoints are plain `def`, so FastAPI runs them in a worker thread and `/health`
+  stays responsive while an answer is being produced.
+- **`extra="forbid"` on the request**: a misspelled field (`"questions"`) is a 422 error,
+  not a silently ignored parameter.
+- **No authentication**: a local demo. Exposing it would need at least an API key, a rate
+  limit and a request-size limit; this is written in the README rather than half-built.
+- **The image carries the code only.** The PDFs, the indexes and the sales database are
+  mounted from the host (read-only for the data, so the container cannot modify them), and
+  the CPU-only PyTorch index is used in the build: the default Linux wheels carry CUDA
+  (~2.5 GB) for a project that runs on a laptop CPU.
+- **Ollama stays on the host** rather than being a second container: the model is already
+  downloaded on the machine, and a container would download its own copy (2 GB) and
+  compete for the same RAM. The API reaches it through `host.docker.internal`.
+- **CI installs a `ci` extra without PyTorch.** The test suite never loads a real model
+  (fakes follow the `Embedder` and `Reranker` protocols), so the job needs no torch, no
+  network and about a minute. The trade-off is that a missing real-model dependency would
+  not be caught by CI; it is caught by the Docker build, which installs `[all]`.
+- **Tests ignore the local `.env`.** `tests/conftest.py` builds every `Settings` with
+  `_env_file=None`. Without it the suite reads whatever the developer configured, so it
+  can pass on a fresh clone (and in CI) and fail on the machine where the project actually
+  runs - which is exactly what happened when the API tests were added (failure log 19).
+- **The Dockerfile is verified in CI, not locally.** The development machine has no
+  Docker engine, so a second CI job builds the image and starts it with the fake LLM and
+  calls `/health`. Shipping an unbuilt Dockerfile in a portfolio project would be worse
+  than having none; this way every push proves it still builds. The limit is stated in
+  the README: the container has never answered a real question.

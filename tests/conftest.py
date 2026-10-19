@@ -11,8 +11,19 @@ from pathlib import Path
 import pymupdf
 import pytest
 
+from assistant.config import Settings
 from assistant.retrieval.bm25 import tokenize
 from assistant.sales_data import SCHEMA_SQL
+
+
+def make_settings(**overrides: object) -> Settings:
+    """Settings for tests.
+
+    `_env_file=None` is what makes them reproducible: without it, pydantic-settings reads
+    the developer's own `.env`, so the same test passes on a fresh clone and fails on the
+    machine where the project is actually configured (see failure log 19).
+    """
+    return Settings(_env_file=None, **overrides)
 
 
 class FakeEmbedder:

@@ -4,12 +4,8 @@ import pytest
 from pydantic import ValidationError
 
 from assistant import __version__
-from assistant.config import PROJECT_ROOT, Settings
-
-
-def make_settings(**overrides: object) -> Settings:
-    # _env_file=None: tests must not depend on a developer's local .env
-    return Settings(_env_file=None, **overrides)
+from assistant.config import PROJECT_ROOT
+from tests.conftest import make_settings
 
 
 def test_version_is_set() -> None:

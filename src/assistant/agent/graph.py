@@ -377,6 +377,7 @@ class Agent:
     ) -> None:
         self.config = config or AgentConfig()
         self.llm = llm
+        self.retriever = retriever  # kept so callers (the API's /health) can describe the index
         self.graph = build_graph(retriever, llm, db_path, self.config)
         self.log_dir = log_dir
 

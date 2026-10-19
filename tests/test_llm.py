@@ -3,7 +3,6 @@ from typing import Any
 import httpx
 import pytest
 
-from assistant.config import Settings
 from assistant.llm import (
     GROQ_BASE_URL,
     LLMError,
@@ -12,10 +11,7 @@ from assistant.llm import (
     OpenAICompatibleLLM,
     make_llm,
 )
-
-
-def settings(**kw: Any) -> Settings:
-    return Settings(_env_file=None, **kw)
+from tests.conftest import make_settings as settings
 
 
 class FakeResponse:

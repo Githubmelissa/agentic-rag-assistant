@@ -1,6 +1,6 @@
 # Agentic RAG Assistant for Company Reports and Sales Data
 
-> Status: **in progress** (Stage 6 of 8: evaluation).
+> Status: **in progress** (Stage 7 of 8: service, container, CI).
 
 An assistant that answers business questions from two sources and shows its work:
 
@@ -98,6 +98,68 @@ installer instead (check with `python -c "import sys; print(sys.version)"`: it m
 pip install torch --index-url https://download.pytorch.org/whl/cpu
 pip install -e ".[all,dev]"
 ```
+
+## Run it as a service
+
+The same agent behind an HTTP API (FastAPI):
+
+```powershell
+uvicorn assistant.api:app --port 8000
+```
+
+Then open <http://localhost:8000/docs> for the interactive documentation, or:
+
+```powershell
+Invoke-RestMethod http://localhost:8000/health
+Invoke-RestMethod -Method Post http://localhost:8000/ask -ContentType application/json `
+  -Body '{"question": "What was Hermes revenue in 2025?"}' -TimeoutSec 600
+```
+
+`-TimeoutSec 600` matters: PowerShell gives up after 100 seconds by default, and a local
+answer takes longer than that.
+
+| route | what it does |
+|---|---|
+| `POST /ask` | one question; answers with the route taken, the answer, the cited pages, the SQL and its rows, the time per step and a trace id |
+| `GET /health` | whether the assistant is ready, which LLM is configured, how many chunks are indexed; never calls the LLM |
+
+The service answers **one question at a time** (a second question gets `429`): a local
+model on a laptop CPU has no spare capacity, so serialising keeps latency predictable.
+There is **no authentication and no rate limit**: it is meant to run on your own machine.
+
+### Docker
+
+```powershell
+docker compose up --build        # http://localhost:8000/docs
+```
+
+The image contains the code only. The reports, the indexes and the sales database stay on
+your machine and are mounted read-only, and Ollama keeps running on the host (the
+container reaches it at `host.docker.internal`), so the model is not downloaded twice.
+Build the indexes and the database before starting the container. The embedding and
+reranking models (about 250 MB) are downloaded on the first question and kept in a volume.
+
+To try the API shape without any model, start it with the fake LLM:
+
+```powershell
+$env:LLM_PROVIDER = "mock"; docker compose up --build
+```
+
+**Honest note:** the development laptop has no Docker engine, so the image has never been
+run against the real indexes. It is built and started (with the fake LLM) by the `docker`
+job of the CI workflow on every push, which is what verifies the `Dockerfile`. The
+`uvicorn` command above is the path that was actually used to answer questions.
+
+### Continuous integration
+
+Every push runs `.github/workflows/ci.yml`, which has two jobs:
+
+- **test**: ruff, the formatter check and the whole test suite on Python 3.11. The tests
+  use a fake LLM, a fake embedder and a fake reranker, so this job needs no model, no
+  network and no PyTorch (the `ci` extra), and finishes in about a minute.
+- **docker**: builds the image and starts it with the fake LLM, then calls `/health`.
+  Since CI has no indexes, the container answers "not ready": the job proves the image
+  builds and serves HTTP, which is what the development machine cannot check.
 
 ## Evaluation
 
